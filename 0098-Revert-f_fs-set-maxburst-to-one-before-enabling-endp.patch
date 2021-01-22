@@ -1,0 +1,38 @@
+From 46b9f0d3ae8ae83e1a984758e977a1f1771ea1a4 Mon Sep 17 00:00:00 2001
+From: Jerry Zhang <zhangjerry@google.com>
+Date: Fri, 23 Mar 2018 16:23:34 -0700
+Subject: [PATCH 098/420] Revert "f_fs: set maxburst to one before enabling
+ endpoints"
+
+This reverts commit e3c2d0c27e3bd3df4b66bba9e9b47c7e0a442eb8.
+
+This was severely slowing down usb transfer speeds.
+
+Bug: 76154677
+Test: mtp and adb speeds return to normal
+Change-Id: I70e7a45b3d71a66a4191637891d145a86495aab6
+Signed-off-by: Jerry Zhang <zhangjerry@google.com>
+---
+ drivers/usb/gadget/function/f_fs.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/drivers/usb/gadget/function/f_fs.c b/drivers/usb/gadget/function/f_fs.c
+index 5baab25dad80..3464a75f649f 100644
+--- a/drivers/usb/gadget/function/f_fs.c
++++ b/drivers/usb/gadget/function/f_fs.c
+@@ -2092,12 +2092,6 @@ static int ffs_func_eps_enable(struct ffs_function *func)
+ 			break;
+ 		}
+ 
+-		/*
+-		 * userspace setting maxburst > 1 results more fifo
+-		 * allocation than without maxburst. Change maxburst to 1
+-		 * only to allocate fifo size of max packet size.
+-		 */
+-		ep->ep->maxburst = 1;
+ 		ret = usb_ep_enable(ep->ep);
+ 		if (likely(!ret)) {
+ 			epfile->ep = ep;
+-- 
+2.15.0
+

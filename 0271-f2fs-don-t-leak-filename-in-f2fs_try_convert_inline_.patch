@@ -1,0 +1,49 @@
+From 44cfafb1449a71be63399bad321d66db4716b0f9 Mon Sep 17 00:00:00 2001
+From: Eric Biggers <ebiggers@google.com>
+Date: Thu, 7 May 2020 00:59:02 -0700
+Subject: [PATCH 271/420] f2fs: don't leak filename in
+ f2fs_try_convert_inline_dir()
+
+We need to call fscrypt_free_filename() to free the memory allocated by
+fscrypt_setup_filename().
+
+Fixes: b06af2aff28b ("f2fs: convert inline_dir early before starting rename")
+Cc: <stable@vger.kernel.org> # v5.6+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/inline.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/inline.c b/fs/f2fs/inline.c
+index d003ce5d5347..bb6f74070fa0 100644
+--- a/fs/f2fs/inline.c
++++ b/fs/f2fs/inline.c
+@@ -577,12 +577,12 @@ int f2fs_try_convert_inline_dir(struct inode *dir, struct dentry *dentry)
+ 	ipage = f2fs_get_node_page(sbi, dir->i_ino);
+ 	if (IS_ERR(ipage)) {
+ 		err = PTR_ERR(ipage);
+-		goto out;
++		goto out_fname;
+ 	}
+ 
+ 	if (f2fs_has_enough_room(dir, ipage, &fname)) {
+ 		f2fs_put_page(ipage, 1);
+-		goto out;
++		goto out_fname;
+ 	}
+ 
+ 	inline_dentry = inline_data_addr(dir, ipage);
+@@ -590,6 +590,8 @@ int f2fs_try_convert_inline_dir(struct inode *dir, struct dentry *dentry)
+ 	err = do_convert_inline_dir(dir, ipage, inline_dentry);
+ 	if (!err)
+ 		f2fs_put_page(ipage, 1);
++out_fname:
++	fscrypt_free_filename(&fname);
+ out:
+ 	f2fs_unlock_op(sbi);
+ 	return err;
+-- 
+2.15.0
+

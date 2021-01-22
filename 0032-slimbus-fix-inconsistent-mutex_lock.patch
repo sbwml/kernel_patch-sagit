@@ -1,0 +1,33 @@
+From 113cad5bfc4504e34463be40402a691db8a23412 Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 21:00:09 -0700
+Subject: [PATCH 032/420] slimbus: fix inconsistent mutex_lock
+
+drivers/slimbus/slimbus.c:1331 slim_config_mgrports() warn: inconsistent
+returns 'mutex:&ctrl->sched.m_reconf'
+
+Change-Id: I023f69cc3496e9b98d9881c447fc1bf9053de97f
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/slimbus/slimbus.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/slimbus/slimbus.c b/drivers/slimbus/slimbus.c
+index 72ac5b80f13e..5b1e7f2e275d 100644
+--- a/drivers/slimbus/slimbus.c
++++ b/drivers/slimbus/slimbus.c
+@@ -1323,8 +1323,10 @@ int slim_config_mgrports(struct slim_device *sb, u32 *ph, int nports,
+ 	for (i = 0; i < nports; i++) {
+ 		u8 pn = SLIM_HDL_TO_PORT(ph[i]);
+ 
+-		if (ctrl->ports[pn].state == SLIM_P_CFG)
++		if (ctrl->ports[pn].state == SLIM_P_CFG) {
++			mutex_unlock(&ctrl->sched.m_reconf);
+ 			return -EISCONN;
++		}
+ 		ctrl->ports[pn].cfg = *cfg;
+ 	}
+ 	mutex_unlock(&ctrl->sched.m_reconf);
+-- 
+2.15.0
+

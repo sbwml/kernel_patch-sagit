@@ -1,0 +1,43 @@
+From 6e278295911abad4907c8b0a9719e8dab31d37a7 Mon Sep 17 00:00:00 2001
+From: Ziqi Chen <ziqichen@codeaurora.org>
+Date: Tue, 19 Jun 2018 19:34:52 +0800
+Subject: [PATCH 370/420] {chiron,sagit}_defconfig: enable F2FS configs
+
+Enable F2FS related configs for MSM8998.
+
+Change-Id: Id52e93ee54e65e558a21a9280456f05b0c9bf9c5
+Signed-off-by: Ziqi Chen <ziqichen@codeaurora.org>
+---
+ arch/arm64/configs/chiron_defconfig | 2 ++
+ arch/arm64/configs/sagit_defconfig  | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index b46f07d389cb..b6837ee0d4df 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -663,6 +663,8 @@ CONFIG_EXT4_FS_SECURITY=y
+ CONFIG_EXT4_ENCRYPTION=y
+ CONFIG_EXT4_FS_ENCRYPTION=y
+ CONFIG_EXT4_FS_ICE_ENCRYPTION=y
++CONFIG_F2FS_FS=y
++CONFIG_F2FS_FS_SECURITY=y
+ CONFIG_QUOTA=y
+ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 514c25211f80..8c533cb6bb02 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -663,6 +663,8 @@ CONFIG_EXT4_FS_SECURITY=y
+ CONFIG_EXT4_ENCRYPTION=y
+ CONFIG_EXT4_FS_ENCRYPTION=y
+ CONFIG_EXT4_FS_ICE_ENCRYPTION=y
++CONFIG_F2FS_FS=y
++CONFIG_F2FS_FS_SECURITY=y
+ CONFIG_QUOTA=y
+ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+-- 
+2.15.0
+

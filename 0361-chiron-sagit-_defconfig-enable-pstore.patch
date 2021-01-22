@@ -1,0 +1,46 @@
+From af134f4d7e96f24907b669b18d5f9b77084f32c4 Mon Sep 17 00:00:00 2001
+From: Oleg Matcovschi <omatcovschi@google.com>
+Date: Tue, 30 Jan 2018 17:56:02 -0800
+Subject: [PATCH 361/420] {chiron,sagit}_defconfig: enable pstore
+
+Bug: 72662019
+Signed-off-by: Oleg Matcovschi <omatcovschi@google.com>
+Change-Id: Ifd3f5f50cd6c496a7be637547223850a5e1f89c2
+---
+ arch/arm64/configs/chiron_defconfig | 4 ++++
+ arch/arm64/configs/sagit_defconfig  | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 9dbe4814d2e0..0691cf35bcdd 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -668,6 +668,10 @@ CONFIG_TMPFS_POSIX_ACL=y
+ CONFIG_ECRYPT_FS=y
+ CONFIG_ECRYPT_FS_MESSAGING=y
+ CONFIG_SDCARD_FS=y
++CONFIG_PSTORE=y
++CONFIG_PSTORE_CONSOLE=y
++CONFIG_PSTORE_PMSG=y
++CONFIG_PSTORE_RAM=y
+ CONFIG_NLS_CODEPAGE_437=y
+ CONFIG_NLS_ISO8859_1=y
+ CONFIG_PRINTK_TIME=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 761fbc891cef..778d4a3d56cb 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -668,6 +668,10 @@ CONFIG_TMPFS_POSIX_ACL=y
+ CONFIG_ECRYPT_FS=y
+ CONFIG_ECRYPT_FS_MESSAGING=y
+ CONFIG_SDCARD_FS=y
++CONFIG_PSTORE=y
++CONFIG_PSTORE_CONSOLE=y
++CONFIG_PSTORE_PMSG=y
++CONFIG_PSTORE_RAM=y
+ CONFIG_NLS_CODEPAGE_437=y
+ CONFIG_NLS_ISO8859_1=y
+ CONFIG_PRINTK_TIME=y
+-- 
+2.15.0
+

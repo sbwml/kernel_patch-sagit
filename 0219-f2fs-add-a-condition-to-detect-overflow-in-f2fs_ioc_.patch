@@ -1,0 +1,40 @@
+From 7c03e67e63fb630489efeace1b6de0849dfd2b2d Mon Sep 17 00:00:00 2001
+From: Sahitya Tummala <stummala@codeaurora.org>
+Date: Tue, 17 Sep 2019 10:19:23 +0530
+Subject: [PATCH 219/420] f2fs: add a condition to detect overflow in
+ f2fs_ioc_gc_range()
+
+end = range.start + range.len;
+
+If the range.start/range.len is a very large value, then end can overflow
+in this operation. It results into a crash in get_valid_blocks() when
+accessing the invalid range.start segno.
+
+This issue is reported in ioctl fuzz testing.
+
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index ce045cdc0703..50397e5b71c9 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -2262,9 +2262,9 @@ static int f2fs_ioc_gc_range(struct file *filp, unsigned long arg)
+ 		return -EROFS;
+ 
+ 	end = range.start + range.len;
+-	if (range.start < MAIN_BLKADDR(sbi) || end >= MAX_BLKADDR(sbi)) {
++	if (end < range.start || range.start < MAIN_BLKADDR(sbi) ||
++					end >= MAX_BLKADDR(sbi))
+ 		return -EINVAL;
+-	}
+ 
+ 	ret = mnt_want_write_file(filp);
+ 	if (ret)
+-- 
+2.15.0
+

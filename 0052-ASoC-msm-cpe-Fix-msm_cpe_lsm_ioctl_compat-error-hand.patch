@@ -1,0 +1,35 @@
+From 4950452f880fdad5030355bde5f61dfbc427aab6 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Mon, 4 Mar 2019 21:12:23 +0200
+Subject: [PATCH 052/420] ASoC: msm-cpe: Fix msm_cpe_lsm_ioctl_compat error
+ handling
+
+Change-Id: Iec6a12aaed4dce60f774c09264b8e566a17ce9d9
+---
+ sound/soc/msm/msm-cpe-lsm.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/sound/soc/msm/msm-cpe-lsm.c b/sound/soc/msm/msm-cpe-lsm.c
+index 2d431a018315..e6148c02c4eb 100644
+--- a/sound/soc/msm/msm-cpe-lsm.c
++++ b/sound/soc/msm/msm-cpe-lsm.c
+@@ -2647,12 +2647,15 @@ static int msm_cpe_lsm_ioctl_compat(struct snd_pcm_substream *substream,
+ 				u_event_status32.payload_size;
+ 			err = msm_cpe_lsm_ioctl_shared(substream,
+ 						       cmd, event_status);
+-			if (err)
++			if (err) {
+ 				dev_err(rtd->dev,
+ 					"%s: %s failed, error = %d\n",
+ 					__func__,
+ 					"SNDRV_LSM_EVENT_STATUS_V3_32",
+ 					err);
++				kfree(event_status);
++				goto done;
++			}
+ 		}
+ 
+ 		if (!err) {
+-- 
+2.15.0
+

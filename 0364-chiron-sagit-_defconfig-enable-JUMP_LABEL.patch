@@ -1,0 +1,58 @@
+From ec956b3e588f2e23a1f0c624e1003c61bcf6a82a Mon Sep 17 00:00:00 2001
+From: joshuous <joshuous@gmail.com>
+Date: Sat, 6 Jan 2018 00:58:42 +0800
+Subject: [PATCH 364/420] {chiron,sagit}_defconfig: enable JUMP_LABEL
+
+This option enables a transparent branch optimization
+that makes certain almost-always-true or almost-always-false
+branch conditions even cheaper to execute within the kernel.
+
+Certain performance-sensitive kernel code, such as trace points,
+scheduler functionality, networking code and KVM have such
+branches and include support for this optimization technique.
+
+If it is detected that the compiler has support for "asm goto",
+the kernel will compile such branches with just a nop instruction.
+When the condition flag is toggled to true, the nop will be
+converted to a jump instruction to execute the conditional
+block of instructions.
+
+This technique lowers overhead and stress on the branchprediction
+of the processor and generally makes the kernel faster.
+The update of the condition is slower, but those are always
+very rare.
+
+Change-Id: I90657cf7ef3b9d116eb019da87dd62e1806e0e87
+Signed-off-by: joshuous <joshuous@gmail.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 32d2f20f962c..6390358cbdb1 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -40,6 +40,7 @@ CONFIG_EMBEDDED=y
+ # CONFIG_SLUB_DEBUG is not set
+ # CONFIG_COMPAT_BRK is not set
+ CONFIG_PROFILING=y
++CONFIG_JUMP_LABEL=y
+ CONFIG_CC_STACKPROTECTOR_STRONG=y
+ CONFIG_ARCH_MMAP_RND_COMPAT_BITS=16
+ CONFIG_MODULES=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 95989cd3e7a3..bebfc124e25c 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -40,6 +40,7 @@ CONFIG_EMBEDDED=y
+ # CONFIG_SLUB_DEBUG is not set
+ # CONFIG_COMPAT_BRK is not set
+ CONFIG_PROFILING=y
++CONFIG_JUMP_LABEL=y
+ CONFIG_CC_STACKPROTECTOR_STRONG=y
+ CONFIG_ARCH_MMAP_RND_COMPAT_BITS=16
+ CONFIG_MODULES=y
+-- 
+2.15.0
+

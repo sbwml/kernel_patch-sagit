@@ -1,0 +1,29 @@
+From 3afe80aa2123848daa97e04418389d2212878089 Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 20:47:18 -0700
+Subject: [PATCH 030/420] wcd9335: fix inconsistent mutex_lock
+
+sound/soc/codecs/wcd9335.c:2608 slim_tx_mixer_put() warn: inconsistent
+returns 'mutex:&tasha_p->codec_mutex'
+
+Change-Id: I73d5331aa29155c85cce6940fe2b918cc7a445f6
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ sound/soc/codecs/wcd9335.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/soc/codecs/wcd9335.c b/sound/soc/codecs/wcd9335.c
+index 2bc911e63e12..bb99e98f34e2 100644
+--- a/sound/soc/codecs/wcd9335.c
++++ b/sound/soc/codecs/wcd9335.c
+@@ -2580,6 +2580,7 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
+ 		if (dai_id >= ARRAY_SIZE(vport_i2s_check_table)) {
+ 			dev_err(codec->dev, "%s: dai_id: %d, out of bounds\n",
+ 				__func__, dai_id);
++			mutex_unlock(&tasha_p->codec_mutex);
+ 			return -EINVAL;
+ 		}
+ 		vtable = vport_i2s_check_table[dai_id];
+-- 
+2.15.0
+

@@ -1,0 +1,34 @@
+From af69e12e50e686cb591e14958b857c99e451a96f Mon Sep 17 00:00:00 2001
+From: Nathan Chancellor <natechancellor@gmail.com>
+Date: Sun, 28 Oct 2018 10:09:32 -0700
+Subject: [PATCH 155/420] zram: Do not allow compression algorithm to be
+ changed
+
+Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
+---
+ drivers/block/zram/zram_drv.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
+index baad18d69b3e..afbea3d476e0 100644
+--- a/drivers/block/zram/zram_drv.c
++++ b/drivers/block/zram/zram_drv.c
+@@ -792,6 +792,7 @@ static ssize_t comp_algorithm_show(struct device *dev,
+ static ssize_t comp_algorithm_store(struct device *dev,
+ 		struct device_attribute *attr, const char *buf, size_t len)
+ {
++#if 0
+ 	struct zram *zram = dev_to_zram(dev);
+ 	char compressor[ARRAY_SIZE(zram->compressor)];
+ 	size_t sz;
+@@ -814,6 +815,7 @@ static ssize_t comp_algorithm_store(struct device *dev,
+ 
+ 	strcpy(zram->compressor, compressor);
+ 	up_write(&zram->init_lock);
++#endif
+ 	return len;
+ }
+ 
+-- 
+2.15.0
+

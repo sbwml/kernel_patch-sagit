@@ -1,0 +1,59 @@
+From 2880fc113f4097200c08c6e319923d2217849c37 Mon Sep 17 00:00:00 2001
+From: Thierry Strudel <tstrudel@google.com>
+Date: Wed, 9 May 2018 11:36:40 -0700
+Subject: [PATCH 091/420] Revert "usb: hub: Prevent hub autosuspend if
+ usbcore.autosuspend is -1"
+
+Certain USB-C devices are failing to enumerate if the bus
+transitions from active to suspend between connection and enumeration.
+
+When a USB-C accessory is inserted in a phone and is detected by the
+CC lines, the controller driver is loaded and the only devices present
+on the bus are the root hubs, until the device enumerations.
+As a result, a suspend transition between device connection and
+enumeration is very likely.
+
+This change leaves the hub autosuspend set to the usbcore.autosuspend
+value so a value can be set high enough to prevent this race.
+
+This reverts:
+commit bdd405d2a528 ("usb: hub: Prevent hub autosuspend if usbcore.autosuspend is -1")
+
+  If user specifies that USB autosuspend must be disabled by module
+  parameter "usbcore.autosuspend=-1" then we must prevent
+  autosuspend of USB hub devices as well.
+
+  commit 596d789a211d introduced in v3.8 changed the original behaivour
+  and stopped respecting the usbcore.autosuspend parameter for hubs.
+
+Bug: 71936484
+Change-Id: Ie20471b9e8d44f92f9eff97ed12ccd903c98c272
+Signed-off-by: Thierry Strudel <tstrudel@google.com>
+Signed-off-by: Andrew Chant <achant@google.com>
+---
+ drivers/usb/core/hub.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index 655279ed6dba..c0817edc4903 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -1722,14 +1722,8 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
+ 	 * - Change autosuspend delay of hub can avoid unnecessary auto
+ 	 *   suspend timer for hub, also may decrease power consumption
+ 	 *   of USB bus.
+-	 *
+-	 * - If user has indicated to prevent autosuspend by passing
+-	 *   usbcore.autosuspend = -1 then keep autosuspend disabled.
+ 	 */
+-#ifdef CONFIG_PM
+-	if (hdev->dev.power.autosuspend_delay >= 0)
+-		pm_runtime_set_autosuspend_delay(&hdev->dev, 0);
+-#endif
++	pm_runtime_set_autosuspend_delay(&hdev->dev, 0);
+ 
+ 	/*
+ 	 * Hubs have proper suspend/resume support, except for root hubs
+-- 
+2.15.0
+

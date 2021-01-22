@@ -1,0 +1,57 @@
+From 713565271b415b4b5c321a2f7f61ceb8d3198215 Mon Sep 17 00:00:00 2001
+From: "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+Date: Mon, 9 Mar 2020 13:10:08 -0500
+Subject: [PATCH 263/420] f2fs: xattr.h: Replace zero-length array with
+ flexible-array member
+
+The current codebase makes use of the zero-length array language
+extension to the C90 standard, but the preferred mechanism to declare
+variable-length types such as these ones is a flexible array member[1][2],
+introduced in C99:
+
+struct foo {
+        int stuff;
+        struct boo array[];
+};
+
+By making use of the mechanism above, we will get a compiler warning
+in case the flexible array does not occur last in the structure, which
+will help us prevent some kind of undefined behavior bugs from being
+inadvertently introduced[3] to the codebase from now on.
+
+Also, notice that, dynamic memory allocations won't be affected by
+this change:
+
+"Flexible array members have incomplete type, and so the sizeof operator
+may not be applied. As a quirk of the original implementation of
+zero-length arrays, sizeof evaluates to zero."[1]
+
+This issue was found with the help of Coccinelle.
+
+[1] https://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html
+[2] https://github.com/KSPP/linux/issues/21
+[3] commit 76497732932f ("cxgb3/l2t: Fix undefined behaviour")
+
+Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/xattr.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/xattr.h b/fs/f2fs/xattr.h
+index 2909c9241145..4d805b59277a 100644
+--- a/fs/f2fs/xattr.h
++++ b/fs/f2fs/xattr.h
+@@ -47,7 +47,7 @@ struct f2fs_xattr_entry {
+ 	__u8    e_name_index;
+ 	__u8    e_name_len;
+ 	__le16  e_value_size;   /* size of attribute value */
+-	char    e_name[0];      /* attribute name */
++	char    e_name[];      /* attribute name */
+ };
+ 
+ #define XATTR_HDR(ptr)		((struct f2fs_xattr_header *)(ptr))
+-- 
+2.15.0
+

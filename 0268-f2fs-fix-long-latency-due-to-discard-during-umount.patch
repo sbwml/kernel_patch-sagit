@@ -1,0 +1,72 @@
+From cefa170f8e58a409cdbab397fbca5281e595d4a5 Mon Sep 17 00:00:00 2001
+From: Sahitya Tummala <stummala@codeaurora.org>
+Date: Wed, 15 Apr 2020 14:37:53 +0530
+Subject: [PATCH 268/420] f2fs: fix long latency due to discard during umount
+
+F2FS already has a default timeout of 5 secs for discards that
+can be issued during umount, but it can take more than the 5 sec
+timeout if the underlying UFS device queue is already full and there
+are no more available free tags to be used. Fix this by submitting a
+small batch of discard requests so that it won't cause the device
+queue to be full at any time and thus doesn't incur its wait time
+in the umount context.
+
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/segment.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index bf85be4e7853..0e453129d3cf 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -1179,7 +1179,6 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
+ 	} else if (discard_type == DPOLICY_FSTRIM) {
+ 		dpolicy->io_aware = false;
+ 	} else if (discard_type == DPOLICY_UMOUNT) {
+-		dpolicy->max_requests = UINT_MAX;
+ 		dpolicy->io_aware = false;
+ 		/* we need to issue all to keep CP_TRIMMED_FLAG */
+ 		dpolicy->granularity = 1;
+@@ -1537,6 +1536,8 @@ next:
+ 
+ 	return issued;
+ }
++static unsigned int __wait_all_discard_cmd(struct f2fs_sb_info *sbi,
++					struct discard_policy *dpolicy);
+ 
+ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
+ 					struct discard_policy *dpolicy)
+@@ -1545,12 +1546,14 @@ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
+ 	struct list_head *pend_list;
+ 	struct discard_cmd *dc, *tmp;
+ 	struct blk_plug plug;
+-	int i, issued = 0;
++	int i, issued;
+ 	bool io_interrupted = false;
+ 
+ 	if (dpolicy->timeout)
+ 		f2fs_update_time(sbi, UMOUNT_DISCARD_TIMEOUT);
+ 
++retry:
++	issued = 0;
+ 	for (i = MAX_PLIST_NUM - 1; i >= 0; i--) {
+ 		if (dpolicy->timeout &&
+ 				f2fs_time_over(sbi, UMOUNT_DISCARD_TIMEOUT))
+@@ -1597,6 +1600,11 @@ next:
+ 			break;
+ 	}
+ 
++	if (dpolicy->type == DPOLICY_UMOUNT && issued) {
++		__wait_all_discard_cmd(sbi, dpolicy);
++		goto retry;
++	}
++
+ 	if (!issued && io_interrupted)
+ 		issued = -1;
+ 
+-- 
+2.15.0
+

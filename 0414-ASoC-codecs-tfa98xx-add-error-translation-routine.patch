@@ -1,0 +1,94 @@
+From a1d425d1e4c2e2eafb4ebbb337a35ca6efd33d68 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jean-Baptiste=20Th=C3=A9ou?= <jb@essential.com>
+Date: Mon, 13 May 2019 07:46:21 +0900
+Subject: [PATCH 414/420] ASoC: codecs: tfa98xx: add error translation routine
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Clang warns:
+
+../sound/soc/codecs/tfa98xx/tfa_dsp.c:3155:9: warning: implicit conversion
+from enumeration type 'enum Tfa98xx_Error' to different enumeration type
+'enum tfa_error' [-Wenum-conversion]
+        return err;
+        ~~~~~~ ^~~
+../sound/soc/codecs/tfa98xx/tfa_dsp.c:3215:9: warning: implicit conversion
+from enumeration type 'enum Tfa98xx_Error' to different enumeration type
+'enum tfa_error' [-Wenum-conversion]
+        return err;
+        ~~~~~~ ^~~
+../sound/soc/codecs/tfa98xx/tfa_dsp.c:3267:9: warning: implicit conversion
+from enumeration type 'enum Tfa98xx_Error' to different enumeration type
+'enum tfa_error' [-Wenum-conversion]
+        return err;
+        ~~~~~~ ^~~
+
+Fixes: 86057e0d07d3 ("sound: import xiaomi changes")
+
+Change-Id: I4d1d428f0306bbe6bb25d8beab8a74307aaeadf7
+Signed-off-by: Jean-Baptiste Théou <jb@essential.com>
+Signed-off-by: Angga Satya Putra <anggasp@hotmail.com>
+---
+ sound/soc/codecs/tfa98xx/tfa_dsp.c | 24 +++++++++++++++++++++---
+ 1 file changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/codecs/tfa98xx/tfa_dsp.c b/sound/soc/codecs/tfa98xx/tfa_dsp.c
+index f5a701c39e35..252316531312 100644
+--- a/sound/soc/codecs/tfa98xx/tfa_dsp.c
++++ b/sound/soc/codecs/tfa98xx/tfa_dsp.c
+@@ -3020,6 +3020,24 @@ enum Tfa98xx_Error tfaRunWaitCalibration(Tfa98xx_handle_t handle, int *calibrate
+ 	return err;
+ }
+ 
++enum tfa_error tfa98xxTotfa(enum Tfa98xx_Error err)
++{
++	switch(err) {
++	case Tfa98xx_Error_Ok:
++		return tfa_error_ok;
++	case Tfa98xx_Error_Device:
++		return tfa_error_device;
++	case Tfa98xx_Error_Bad_Parameter:
++		return tfa_error_bad_param;
++	case Tfa98xx_Error_NoClock:
++		return tfa_error_noclock;
++	case Tfa98xx_Error_StateTimedOut:
++		return tfa_error_timeout;
++	default:
++		return tfa_error_bad_param;
++	}
++}
++
+ enum tfa_error tfa_start(int next_profile, int *vstep)
+ {
+ 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+@@ -3152,7 +3170,7 @@ error_exit:
+ 			show_current_state(dev);
+ 		tfaContClose(dev); /* close all of them */
+ 	}
+-	return err;
++	return tfa98xxTotfa(err);
+ }
+ 
+ enum tfa_error tfa_stop(void)
+@@ -3212,7 +3230,7 @@ enum tfa_error tfa_stop(void)
+ error_exit:
+ 	for (dev = 0; dev < devcount; dev++)
+ 		tfaContClose(dev); /* close all of them */
+-	return err;
++	return tfa98xxTotfa(err);
+ }
+ 
+ /*
+@@ -3264,7 +3282,7 @@ enum tfa_error tfa_reset(void)
+ 		tfaContClose(dev);
+ 	}
+ 
+-	return err;
++	return tfa98xxTotfa(err);
+ }
+ 
+ /*
+-- 
+2.15.0
+

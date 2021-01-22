@@ -1,0 +1,53 @@
+From 645ec335502b35f5a164deb2ad29f95ee849a8b9 Mon Sep 17 00:00:00 2001
+From: Ethan Chen <intervigil@gmail.com>
+Date: Fri, 27 Feb 2015 18:31:48 -0800
+Subject: [PATCH 021/420] power: reset: allow device to preserve memory on
+ restart
+
+* Always perform a soft reset as this preserves memory contents,
+  including pstore and other persistent memory.
+
+Change-Id: Ideca44c9f38d2ebcd437ff289f8e036922eafcd2
+---
+ drivers/power/reset/Kconfig        | 9 +++++++++
+ drivers/power/reset/msm-poweroff.c | 4 ++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/drivers/power/reset/Kconfig b/drivers/power/reset/Kconfig
+index 7569e35b59e0..3f3b9788f7fc 100644
+--- a/drivers/power/reset/Kconfig
++++ b/drivers/power/reset/Kconfig
+@@ -103,6 +103,15 @@ config QCOM_DLOAD_MODE
+ 		make the kernel reboot on a kernel panic - that must be
+ 		enabled via another mechanism.
+ 
++config QCOM_PRESERVE_MEM
++	bool "Always preserve memory on restart"
++	depends on POWER_RESET_QCOM
++	help
++	  If crash to download mode is disabled and restart reason is null
++	  the system will always perform a hard reset, which wipes out
++	  persistent memory contents. Select this option to always perform
++	  a soft reset that preserves memory contents.
++
+ config POWER_RESET_QNAP
+ 	bool "QNAP power-off driver"
+ 	depends on OF_GPIO && PLAT_ORION
+diff --git a/drivers/power/reset/msm-poweroff.c b/drivers/power/reset/msm-poweroff.c
+index d052e9518060..5af1e5e0b5bc 100644
+--- a/drivers/power/reset/msm-poweroff.c
++++ b/drivers/power/reset/msm-poweroff.c
+@@ -294,6 +294,10 @@ static void msm_restart_prepare(const char *cmd)
+ 				(cmd != NULL && cmd[0] != '\0'));
+ 	}
+ 
++#ifdef CONFIG_QCOM_PRESERVE_MEM
++	need_warm_reset = true;
++#endif
++
+ 	/* Hard reset the PMIC unless memory contents must be maintained. */
+ 	if (need_warm_reset) {
+ 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+-- 
+2.15.0
+

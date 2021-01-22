@@ -1,0 +1,40 @@
+From 6aeb062e31033130586b8dd624d051e269d4779e Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Mon, 18 Jun 2018 18:06:40 +0000
+Subject: [PATCH 307/420] dts: xiaomi: msm8998: limit led current
+
+Xiaomi limits this current in userspace by setting the max_brightness
+to 64 out of 256. This means that the default current is reduced 4
+times.
+Do this kernel-side because we're smarter.
+
+Change-Id: I2facc5da9e2e6aad4c00e8732ce07e1fc550ed88
+---
+ arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
+index fd5abc363f39..15936d39d92d 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
+@@ -31,14 +31,17 @@
+ 
+ &red_led {
+ 	/delete-property/ linux,default-trigger;
++	qcom,max-current = <3>;
+ };
+ 
+ &green_led {
+ 	/delete-property/ linux,default-trigger;
++	qcom,max-current = <3>;
+ };
+ 
+ &blue_led {
+ 	/delete-property/ linux,default-trigger;
++	qcom,max-current = <3>;
+ };
+ 
+ &pmi8998_wled {
+-- 
+2.15.0
+

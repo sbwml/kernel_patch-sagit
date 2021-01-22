@@ -1,0 +1,39 @@
+From b6931487e9183851bb8e9da4b239333ad13d9fbf Mon Sep 17 00:00:00 2001
+From: dianlujitao <dianlujitao@lineageos.org>
+Date: Fri, 2 Feb 2018 17:31:04 +0800
+Subject: [PATCH 330/420] goodix_ta: respect capacitive keys state
+
+ * Only report key event when capacitive keys enabled
+
+Change-Id: Id30ba1fd7a589b2fce7bd3d2f433a6b1d756b37d
+---
+ drivers/input/fingerprint/goodix_ta/gf_spi.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/input/fingerprint/goodix_ta/gf_spi.c b/drivers/input/fingerprint/goodix_ta/gf_spi.c
+index 537a6c7abfe2..5ab80b66c137 100644
+--- a/drivers/input/fingerprint/goodix_ta/gf_spi.c
++++ b/drivers/input/fingerprint/goodix_ta/gf_spi.c
+@@ -79,6 +79,8 @@ static void gf_kernel_key_input(struct gf_device *gf_dev, struct gf_key *gf_key)
+ 	}
+ }
+ 
++extern bool capacitive_keys_enabled;
++
+ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	struct gf_device *gf_dev = &gf;
+@@ -104,8 +106,8 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 			rc = -EFAULT;
+ 			break;
+ 		}
+-
+-		gf_kernel_key_input(gf_dev, &gf_key);
++		if (capacitive_keys_enabled)
++			gf_kernel_key_input(gf_dev, &gf_key);
+ 		break;
+ 	default:
+ 		pr_debug("%s: unsupport cmd:0x%x\n", __func__, cmd);
+-- 
+2.15.0
+

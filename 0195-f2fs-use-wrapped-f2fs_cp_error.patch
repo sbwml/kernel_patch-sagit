@@ -1,0 +1,29 @@
+From c0c9034fe06a202b64fa9a1d63f72b1b4a355255 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Thu, 15 Aug 2019 19:45:35 +0800
+Subject: [PATCH 195/420] f2fs: use wrapped f2fs_cp_error()
+
+Just cleanup, no logic change.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 2f02199047a9..8b9ad87306f6 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -703,7 +703,7 @@ no_delete:
+ 	stat_dec_inline_dir(inode);
+ 	stat_dec_inline_inode(inode);
+ 
+-	if (likely(!is_set_ckpt_flags(sbi, CP_ERROR_FLAG) &&
++	if (likely(!f2fs_cp_error(sbi) &&
+ 				!is_sbi_flag_set(sbi, SBI_CP_DISABLED)))
+ 		f2fs_bug_on(sbi, is_inode_flag_set(inode, FI_DIRTY_INODE));
+ 	else
+-- 
+2.15.0
+

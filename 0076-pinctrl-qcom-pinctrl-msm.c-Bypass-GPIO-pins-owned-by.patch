@@ -1,0 +1,35 @@
+From 3e553df02d1f5913b3792b28f932b18346fcedf4 Mon Sep 17 00:00:00 2001
+From: Woody Lin <woody_lin@htc.com>
+Date: Mon, 6 Feb 2017 14:31:03 +0800
+Subject: [PATCH 076/420] pinctrl/qcom: pinctrl-msm.c: Bypass GPIO pins owned
+ by TZ
+
+Accessing pins owned by TZ crashes the system. Avoid to access these
+pins in msm_gpio_dbg_show so that we can cat "/d/gpio" to monitor pin
+states without crash.
+
+Bug: 34906817
+Change-Id: Ib5347dee882299361094e31cfb7950b65716e654
+Signed-off-by: Woody Lin <woody_lin@htc.com>
+---
+ drivers/pinctrl/qcom/pinctrl-msm.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
+index 2db0a54eeb8f..9cbd2ab13877 100644
+--- a/drivers/pinctrl/qcom/pinctrl-msm.c
++++ b/drivers/pinctrl/qcom/pinctrl-msm.c
+@@ -504,6 +504,10 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
+ 	unsigned i;
+ 
+ 	for (i = 0; i < chip->ngpio; i++, gpio++) {
++		/* Bypass GPIO pins owned by TZ */
++		switch (gpio)
++			case 81 ... 84: continue;
++
+ 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
+ 		seq_puts(s, "\n");
+ 	}
+-- 
+2.15.0
+

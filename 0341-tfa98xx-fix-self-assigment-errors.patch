@@ -1,0 +1,40 @@
+From 8689c1cd8836ebc78a7700e7efb816dd9d95b307 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Sat, 10 Mar 2018 20:47:56 +0000
+Subject: [PATCH 341/420] tfa98xx: fix self assigment errors
+
+Change-Id: Ie87226c26ea07a5284fdb61fee6802817c00006b
+---
+ sound/soc/codecs/tfa98xx/tfa9897_init.c | 2 +-
+ sound/soc/codecs/tfa98xx/tfa_dsp.c      | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/codecs/tfa98xx/tfa9897_init.c b/sound/soc/codecs/tfa98xx/tfa9897_init.c
+index a1267bf69130..164d364bbdaf 100644
+--- a/sound/soc/codecs/tfa98xx/tfa9897_init.c
++++ b/sound/soc/codecs/tfa98xx/tfa9897_init.c
+@@ -108,7 +108,7 @@ static enum Tfa98xx_Error tfa9897_tfa_dsp_write_tables(Tfa98xx_handle_t dev_idx,
+ 	enum Tfa98xx_Error error;
+ 
+ 	/* Not used for max1! */
+-	sample_rate = sample_rate;
++	(void)sample_rate;
+ 
+ 	error = tfa9897_dsp_write_vsfwdelay_table(dev_idx);
+ 	if (error == Tfa98xx_Error_Ok)
+diff --git a/sound/soc/codecs/tfa98xx/tfa_dsp.c b/sound/soc/codecs/tfa98xx/tfa_dsp.c
+index 5631bce04793..f5a701c39e35 100644
+--- a/sound/soc/codecs/tfa98xx/tfa_dsp.c
++++ b/sound/soc/codecs/tfa98xx/tfa_dsp.c
+@@ -2594,7 +2594,7 @@ enum Tfa98xx_Error tfaRunSpeakerCalibration(Tfa98xx_handle_t handle, int profile
+ 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+ 	int calibrateDone, spkr_count = 0;
+ 	/* Avoid warning in user-space */
+-	profile = profile;
++	(void)profile;
+ 
+ #ifdef __KERNEL__ /* Necessary otherwise we are thrown out of operating mode in kernel (because of internal clock) */
+ 	/* SL: In kernel, there's no clock available during cold start, therefore power down chip */
+-- 
+2.15.0
+

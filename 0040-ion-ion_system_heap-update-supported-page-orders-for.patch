@@ -1,0 +1,41 @@
+From b464935e8d7aeca779ef00f4a7b774449c9bfcf5 Mon Sep 17 00:00:00 2001
+From: Prakash Gupta <guptap@codeaurora.org>
+Date: Tue, 10 Apr 2018 15:13:21 +0530
+Subject: [PATCH 040/420] ion: ion_system_heap: update supported page-orders
+ for ion pool
+
+The supported mappings for ARMv8 are 1GB, 2MB, 64KB and 4KB. So 1MB
+allocations from ion pool is not used for ARMv8 section map. Such
+allocations end up being mapped as multiple 64K sections map, while still
+using 1MB contiguous memory. In case of ARMv7s, page-order 9 allocations
+are not used as section map.
+
+Drop page-order 8 ion pool for builds using ARMv8 pagetables and page-order
+9 ion pool for builds using ARMv7s.
+
+Change-Id: Ifff2d8f1cf61ce443311d16c11b8edc191b27a22
+Signed-off-by: Prakash Gupta <guptap@codeaurora.org>
+---
+ drivers/staging/android/ion/ion_system_heap.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/staging/android/ion/ion_system_heap.c b/drivers/staging/android/ion/ion_system_heap.c
+index a3d7ab5474fd..ac4fa5442b08 100644
+--- a/drivers/staging/android/ion/ion_system_heap.c
++++ b/drivers/staging/android/ion/ion_system_heap.c
+@@ -37,7 +37,11 @@ static gfp_t high_order_gfp_flags = (GFP_HIGHUSER | __GFP_NOWARN |
+ static gfp_t low_order_gfp_flags  = (GFP_HIGHUSER | __GFP_NOWARN);
+ 
+ #ifndef CONFIG_ALLOC_BUFFERS_IN_4K_CHUNKS
+-static const unsigned int orders[] = {9, 8, 4, 0};
++#if defined(CONFIG_IOMMU_IO_PGTABLE_ARMV7S)
++static const unsigned int orders[] = {8, 4, 0};
++#else
++static const unsigned int orders[] = {9, 4, 0};
++#endif
+ #else
+ static const unsigned int orders[] = {0};
+ #endif
+-- 
+2.15.0
+

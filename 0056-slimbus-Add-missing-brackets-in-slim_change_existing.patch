@@ -1,0 +1,30 @@
+From dd8a2ae079a833410b692401f80aa799d78aa569 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Tue, 5 Mar 2019 00:37:50 +0200
+Subject: [PATCH 056/420] slimbus: Add missing brackets in
+ slim_change_existing_chans
+
+Change-Id: I2f13656d0e8aa18213b54314f19fcd33a96751c4
+---
+ drivers/slimbus/slimbus.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/slimbus/slimbus.c b/drivers/slimbus/slimbus.c
+index 5b1e7f2e275d..a95105cc7db6 100644
+--- a/drivers/slimbus/slimbus.c
++++ b/drivers/slimbus/slimbus.c
+@@ -2755,9 +2755,10 @@ static void slim_change_existing_chans(struct slim_controller *ctrl, int coeff)
+ 	for (i = 0; i < len; i++) {
+ 		struct slim_ich *slc = arr[i];
+ 		if (slc->state == SLIM_CH_ACTIVE ||
+-			slc->state == SLIM_CH_SUSPENDED)
++			slc->state == SLIM_CH_SUSPENDED) {
+ 			slc->offset = slc->newoff;
+ 			slc->interval = slc->newintr;
++		}
+ 	}
+ }
+ static void slim_chan_changes(struct slim_device *sb, bool revert)
+-- 
+2.15.0
+

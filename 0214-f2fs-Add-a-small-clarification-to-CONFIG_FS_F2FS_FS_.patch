@@ -1,0 +1,30 @@
+From b917946263d7fb9846e38335ce5bac8fc84bf79c Mon Sep 17 00:00:00 2001
+From: Lockywolf <lockywolf@gmail.com>
+Date: Sun, 25 Aug 2019 17:28:38 +0800
+Subject: [PATCH 214/420] f2fs: Add a small clarification to
+ CONFIG_FS_F2FS_FS_SECURITY
+
+Signed-off-by: Lockywolf <lockywolf@gmail.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/Kconfig | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/Kconfig b/fs/f2fs/Kconfig
+index 378c221d68a9..b293b63a0a9e 100644
+--- a/fs/f2fs/Kconfig
++++ b/fs/f2fs/Kconfig
+@@ -62,7 +62,9 @@ config F2FS_FS_SECURITY
+ 	  Security Models (LSMs) accepted by AppArmor, SELinux, Smack and TOMOYO
+ 	  Linux. This option enables an extended attribute handler for file
+ 	  security labels in the f2fs filesystem, so that it requires enabling
+-	  the extended attribute support in advance.
++	  the extended attribute support in advance. In particular you need this
++	  option if you use the setcap command to assign initial process capabi-
++	  lities to executables (the security.* extended attributes).
+ 
+ 	  If you are not using a security module, say N.
+ 
+-- 
+2.15.0
+

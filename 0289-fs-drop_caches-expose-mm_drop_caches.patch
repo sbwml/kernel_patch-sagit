@@ -1,0 +1,68 @@
+From 758f4ce13a5b59d8e529635b1a81c05d4926604b Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Mon, 1 Apr 2019 22:03:44 +0900
+Subject: [PATCH 289/420] fs: drop_caches: expose mm_drop_caches()
+
+This allows other kernel code to directly call drop_caches.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/drop_caches.c   | 22 ++++++++++++++--------
+ include/linux/mm.h |  1 +
+ 2 files changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/fs/drop_caches.c b/fs/drop_caches.c
+index 44de6b82b16f..487595f81a3a 100644
+--- a/fs/drop_caches.c
++++ b/fs/drop_caches.c
+@@ -45,6 +45,18 @@ void drop_pagecache_sb(struct super_block *sb, void *unused)
+ 	iput(toput_inode);
+ }
+ 
++void mm_drop_caches(int val)
++{
++	if (val & 1) {
++		iterate_supers(drop_pagecache_sb, NULL);
++		count_vm_event(DROP_PAGECACHE);
++	}
++	if (val & 2) {
++		drop_slab();
++		count_vm_event(DROP_SLAB);
++	}
++}
++
+ int drop_caches_sysctl_handler(struct ctl_table *table, int write,
+ 	void __user *buffer, size_t *length, loff_t *ppos)
+ {
+@@ -56,14 +68,8 @@ int drop_caches_sysctl_handler(struct ctl_table *table, int write,
+ 	if (write) {
+ 		static int stfu;
+ 
+-		if (sysctl_drop_caches & 1) {
+-			iterate_supers(drop_pagecache_sb, NULL);
+-			count_vm_event(DROP_PAGECACHE);
+-		}
+-		if (sysctl_drop_caches & 2) {
+-			drop_slab();
+-			count_vm_event(DROP_SLAB);
+-		}
++		mm_drop_caches(sysctl_drop_caches);
++
+ 		if (!stfu) {
+ 			pr_info("%s (%d): drop_caches: %d\n",
+ 				current->comm, task_pid_nr(current),
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index ed48a15d6363..811bb0e215b2 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2242,6 +2242,7 @@ extern int sysctl_drop_caches;
+ int drop_caches_sysctl_handler(struct ctl_table *, int,
+ 					void __user *, size_t *, loff_t *);
+ #endif
++void mm_drop_caches(int val);
+ 
+ void drop_slab(void);
+ void drop_slab_node(int nid);
+-- 
+2.15.0
+

@@ -1,0 +1,78 @@
+From e645523d88ce0d5a7d9c4c95a57555df9dd48111 Mon Sep 17 00:00:00 2001
+From: Kevin Brodsky <kevin.brodsky@arm.com>
+Date: Thu, 12 May 2016 10:55:47 +0100
+Subject: [PATCH 138/420] FROMLIST: [PATCH 1/6] arm64: compat: Use vDSO
+ sigreturn trampolines if available
+
+(cherry pick from url https://patchwork.kernel.org/patch/10060449/)
+
+If the compat vDSO is enabled, it replaces the sigreturn page.
+Therefore, we use the sigreturn trampolines the vDSO provides instead.
+
+Signed-off-by: Kevin Brodsky <kevin.brodsky@arm.com>
+Signed-off-by: Mark Salyzyn <salyzyn@android.com>
+Bug: 63737556
+Bug: 20045882
+Change-Id: Ic0933741e321e1bf66409b7e190a776f12948024
+---
+ arch/arm64/include/asm/vdso.h |  3 +++
+ arch/arm64/kernel/signal32.c  | 15 +++++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/arch/arm64/include/asm/vdso.h b/arch/arm64/include/asm/vdso.h
+index 839ce0031bd5..f2a952338f1e 100644
+--- a/arch/arm64/include/asm/vdso.h
++++ b/arch/arm64/include/asm/vdso.h
+@@ -28,6 +28,9 @@
+ #ifndef __ASSEMBLY__
+ 
+ #include <generated/vdso-offsets.h>
++#ifdef CONFIG_VDSO32
++#include <generated/vdso32-offsets.h>
++#endif
+ 
+ #define VDSO_SYMBOL(base, name)						   \
+ ({									   \
+diff --git a/arch/arm64/kernel/signal32.c b/arch/arm64/kernel/signal32.c
+index 7f6031da15fc..666363d127e5 100644
+--- a/arch/arm64/kernel/signal32.c
++++ b/arch/arm64/kernel/signal32.c
+@@ -28,6 +28,7 @@
+ #include <asm/signal32.h>
+ #include <asm/uaccess.h>
+ #include <asm/unistd.h>
++#include <asm/vdso.h>
+ 
+ struct compat_vfp_sigframe {
+ 	compat_ulong_t	magic;
+@@ -438,6 +439,19 @@ static void compat_setup_return(struct pt_regs *regs, struct k_sigaction *ka,
+ 		retcode = ptr_to_compat(ka->sa.sa_restorer);
+ 	} else {
+ 		/* Set up sigreturn pointer */
++#ifdef CONFIG_VDSO32
++		void *vdso_base = current->mm->context.vdso;
++		void *trampoline =
++			(ka->sa.sa_flags & SA_SIGINFO
++			 ? (thumb
++			    ? VDSO_SYMBOL(vdso_base, compat_rt_sigreturn_thumb)
++			    : VDSO_SYMBOL(vdso_base, compat_rt_sigreturn_arm))
++			 : (thumb
++			    ? VDSO_SYMBOL(vdso_base, compat_sigreturn_thumb)
++			    : VDSO_SYMBOL(vdso_base, compat_sigreturn_arm)));
++
++		retcode = ptr_to_compat(trampoline) + thumb;
++#else
+ 		void *sigreturn_base = current->mm->context.vdso;
+ 		unsigned int idx = thumb << 1;
+ 
+@@ -445,6 +459,7 @@ static void compat_setup_return(struct pt_regs *regs, struct k_sigaction *ka,
+ 			idx += 3;
+ 
+ 		retcode = ptr_to_compat(sigreturn_base) + (idx << 2) + thumb;
++#endif
+ 	}
+ 
+ 	regs->regs[0]	= usig;
+-- 
+2.15.0
+

@@ -1,0 +1,259 @@
+From 28bd67681ddaaf39098ee3003ee617f80f7563bc Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Wed, 28 Oct 2020 13:48:47 +0800
+Subject: [PATCH 001/420] Revert "msm: kgsl: Mark the scratch buffer as
+ privileged"
+
+This reverts commit adec4f93e1705640e7b03d33394224ff5d835280.
+---
+ drivers/gpu/msm/adreno.c            | 15 +-----------
+ drivers/gpu/msm/adreno.h            |  4 +---
+ drivers/gpu/msm/adreno_a5xx.c       | 15 +++++-------
+ drivers/gpu/msm/adreno_a5xx.h       |  4 ++--
+ drivers/gpu/msm/adreno_pm4types.h   |  4 +---
+ drivers/gpu/msm/adreno_ringbuffer.c | 46 +++----------------------------------
+ drivers/gpu/msm/adreno_ringbuffer.h |  5 +---
+ 7 files changed, 15 insertions(+), 78 deletions(-)
+
+diff --git a/drivers/gpu/msm/adreno.c b/drivers/gpu/msm/adreno.c
+index 6df074cd2876..000274c5146a 100644
+--- a/drivers/gpu/msm/adreno.c
++++ b/drivers/gpu/msm/adreno.c
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2002,2007-2020, The Linux Foundation. All rights reserved.
++/* Copyright (c) 2002,2007-2019, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -2827,19 +2827,6 @@ static void adreno_resume_device(struct kgsl_device *device)
+ 	adreno_dispatcher_unhalt(device);
+ }
+ 
+-u32 adreno_get_ucode_version(const u32 *data)
+-{
+-	u32 version;
+-
+-	version = data[1];
+-
+-	if ((version & 0xf) != 0xa)
+-		return version;
+-
+-	version &= ~0xfff;
+-	return  version | ((data[3] & 0xfff000) >> 12);
+-}
+-
+ static const struct kgsl_functable adreno_functable = {
+ 	/* Mandatory functions */
+ 	.regread = adreno_regread,
+diff --git a/drivers/gpu/msm/adreno.h b/drivers/gpu/msm/adreno.h
+index 5434cfb4083b..1f598bf3d9f8 100644
+--- a/drivers/gpu/msm/adreno.h
++++ b/drivers/gpu/msm/adreno.h
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2008-2018,2020 The Linux Foundation. All rights reserved.
++/* Copyright (c) 2008-2018, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -942,8 +942,6 @@ int adreno_efuse_read_u32(struct adreno_device *adreno_dev, unsigned int offset,
+ 		unsigned int *val);
+ void adreno_efuse_unmap(struct adreno_device *adreno_dev);
+ 
+-u32 adreno_get_ucode_version(const u32 *data);
+-
+ #define ADRENO_TARGET(_name, _id) \
+ static inline int adreno_is_##_name(struct adreno_device *adreno_dev) \
+ { \
+diff --git a/drivers/gpu/msm/adreno_a5xx.c b/drivers/gpu/msm/adreno_a5xx.c
+index c206bdac7d39..2514d13b4cdc 100644
+--- a/drivers/gpu/msm/adreno_a5xx.c
++++ b/drivers/gpu/msm/adreno_a5xx.c
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2014-2018,2020 The Linux Foundation. All rights reserved.
++/* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -2177,15 +2177,12 @@ static int a5xx_post_start(struct adreno_device *adreno_dev)
+ 		*cmds++ = 0xF;
+ 	}
+ 
+-	if (adreno_is_preemption_enabled(adreno_dev)) {
++	if (adreno_is_preemption_enabled(adreno_dev))
+ 		cmds += _preemption_init(adreno_dev, rb, cmds, NULL);
+-		rb->_wptr = rb->_wptr - (42 - (cmds - start));
+-		ret = adreno_ringbuffer_submit_spin_nosync(rb, NULL, 2000);
+-	} else {
+-		rb->_wptr = rb->_wptr - (42 - (cmds - start));
+-		ret = adreno_ringbuffer_submit_spin(rb, NULL, 2000);
+-	}
+ 
++	rb->_wptr = rb->_wptr - (42 - (cmds - start));
++
++	ret = adreno_ringbuffer_submit_spin(rb, NULL, 2000);
+ 	if (ret)
+ 		spin_idle_debug(KGSL_DEVICE(adreno_dev),
+ 				"hw initialization failed to idle\n");
+@@ -2557,7 +2554,7 @@ static int _load_firmware(struct kgsl_device *device, const char *fwfile,
+ 
+ 	memcpy(ucode->hostptr, &fw->data[4], fw->size - 4);
+ 	*ucode_size = (fw->size - 4) / sizeof(uint32_t);
+-	*ucode_version = adreno_get_ucode_version((u32 *)fw->data);
++	*ucode_version = *(unsigned int *)&fw->data[4];
+ 
+ done:
+ 	release_firmware(fw);
+diff --git a/drivers/gpu/msm/adreno_a5xx.h b/drivers/gpu/msm/adreno_a5xx.h
+index 8cfd297fa86d..08fd16a83f30 100644
+--- a/drivers/gpu/msm/adreno_a5xx.h
++++ b/drivers/gpu/msm/adreno_a5xx.h
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2015-2016,2020, The Linux Foundation. All rights reserved.
++/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -112,7 +112,7 @@ void a5xx_crashdump_init(struct adreno_device *adreno_dev);
+ 
+ void a5xx_hwcg_set(struct adreno_device *adreno_dev, bool on);
+ 
+-#define A5XX_CP_RB_CNTL_DEFAULT ((1 << 27) | ((ilog2(4) << 8) & 0x1F00) | \
++#define A5XX_CP_RB_CNTL_DEFAULT (((ilog2(4) << 8) & 0x1F00) | \
+ 		(ilog2(KGSL_RB_DWORDS >> 1) & 0x3F))
+ /* GPMU interrupt multiplexor */
+ #define FW_INTR_INFO			(0)
+diff --git a/drivers/gpu/msm/adreno_pm4types.h b/drivers/gpu/msm/adreno_pm4types.h
+index fdd12f571b2e..ec2c29b929c1 100644
+--- a/drivers/gpu/msm/adreno_pm4types.h
++++ b/drivers/gpu/msm/adreno_pm4types.h
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2002,2007-2016,2020, The Linux Foundation. All rights reserved.
++/* Copyright (c) 2002,2007-2016, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -97,8 +97,6 @@
+ /* A5XX Enable yield in RB only */
+ #define CP_YIELD_ENABLE 0x1C
+ 
+-#define CP_WHERE_AM_I 0x62
+-
+ /* Enable/Disable/Defer A5x global preemption model */
+ #define CP_PREEMPT_ENABLE_GLOBAL    0x69
+ 
+diff --git a/drivers/gpu/msm/adreno_ringbuffer.c b/drivers/gpu/msm/adreno_ringbuffer.c
+index 475e5e60163d..3a3777823013 100644
+--- a/drivers/gpu/msm/adreno_ringbuffer.c
++++ b/drivers/gpu/msm/adreno_ringbuffer.c
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2002,2007-2017,2019-2020 The Linux Foundation. All rights reserved.
++/* Copyright (c) 2002,2007-2017,2019, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -138,7 +138,7 @@ void adreno_ringbuffer_submit(struct adreno_ringbuffer *rb,
+ 	adreno_ringbuffer_wptr(adreno_dev, rb);
+ }
+ 
+-int adreno_ringbuffer_submit_spin_nosync(struct adreno_ringbuffer *rb,
++int adreno_ringbuffer_submit_spin(struct adreno_ringbuffer *rb,
+ 		struct adreno_submit_time *time, unsigned int timeout)
+ {
+ 	struct adreno_device *adreno_dev = ADRENO_RB_DEVICE(rb);
+@@ -147,38 +147,6 @@ int adreno_ringbuffer_submit_spin_nosync(struct adreno_ringbuffer *rb,
+ 	return adreno_spin_idle(adreno_dev, timeout);
+ }
+ 
+-/*
+- * adreno_ringbuffer_submit_spin() - Submit the cmds and wait until GPU is idle
+- * @rb: Pointer to ringbuffer
+- * @time: Pointer to adreno_submit_time
+- * @timeout: timeout value in ms
+- *
+- * Add commands to the ringbuffer and wait until GPU goes to idle. This routine
+- * inserts a WHERE_AM_I packet to trigger a shadow rptr update. So, use
+- * adreno_ringbuffer_submit_spin_nosync() if the previous cmd in the RB is a
+- * CSY packet because CSY followed by WHERE_AM_I is not legal..
+- */
+-int adreno_ringbuffer_submit_spin(struct adreno_ringbuffer *rb,
+-		struct adreno_submit_time *time, unsigned int timeout)
+-{
+-	struct adreno_device *adreno_dev = ADRENO_RB_DEVICE(rb);
+-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+-	unsigned int *cmds;
+-
+-	if (adreno_is_a3xx(adreno_dev))
+-		return adreno_ringbuffer_submit_spin_nosync(rb, time, timeout);
+-
+-	cmds = adreno_ringbuffer_allocspace(rb, 3);
+-	if (IS_ERR(cmds))
+-		return PTR_ERR(cmds);
+-
+-	*cmds++ = cp_packet(adreno_dev, CP_WHERE_AM_I, 2);
+-	cmds += cp_gpuaddr(adreno_dev, cmds,
+-			SCRATCH_RPTR_GPU_ADDR(device, rb->id));
+-
+-	return adreno_ringbuffer_submit_spin_nosync(rb, time, timeout);
+-}
+-
+ unsigned int *adreno_ringbuffer_allocspace(struct adreno_ringbuffer *rb,
+ 		unsigned int dwords)
+ {
+@@ -305,12 +273,11 @@ int adreno_ringbuffer_probe(struct adreno_device *adreno_dev, bool nopreempt)
+ {
+ 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+ 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+-	unsigned int priv = KGSL_MEMDESC_RANDOM | KGSL_MEMDESC_PRIVILEGED;
+ 	int i, status;
+ 
+ 	if (!adreno_is_a3xx(adreno_dev)) {
+ 		status = kgsl_allocate_global(device, &device->scratch,
+-				PAGE_SIZE, 0, priv, "scratch");
++				PAGE_SIZE, 0, KGSL_MEMDESC_RANDOM, "scratch");
+ 		if (status != 0)
+ 			return status;
+ 	}
+@@ -513,8 +480,6 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
+ 	if (gpudev->preemption_post_ibsubmit &&
+ 				adreno_is_preemption_enabled(adreno_dev))
+ 		total_sizedwords += 5;
+-	else if (!adreno_is_a3xx(adreno_dev))
+-		total_sizedwords += 3;
+ 
+ 	/*
+ 	 * a5xx uses 64 bit memory address. pm4 commands that involve read/write
+@@ -705,11 +670,6 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
+ 				adreno_is_preemption_enabled(adreno_dev))
+ 		ringcmds += gpudev->preemption_post_ibsubmit(adreno_dev,
+ 			ringcmds);
+-	else if (!adreno_is_a3xx(adreno_dev)) {
+-		*ringcmds++ = cp_packet(adreno_dev, CP_WHERE_AM_I, 2);
+-		ringcmds += cp_gpuaddr(adreno_dev, ringcmds,
+-				SCRATCH_RPTR_GPU_ADDR(device, rb->id));
+-	}
+ 
+ 	/*
+ 	 * If we have more ringbuffer commands than space reserved
+diff --git a/drivers/gpu/msm/adreno_ringbuffer.h b/drivers/gpu/msm/adreno_ringbuffer.h
+index a2bf92acf4af..d64ccbdc846c 100644
+--- a/drivers/gpu/msm/adreno_ringbuffer.h
++++ b/drivers/gpu/msm/adreno_ringbuffer.h
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2002,2007-2016,2019-2020 The Linux Foundation. All rights reserved.
++/* Copyright (c) 2002,2007-2016,2019, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -172,9 +172,6 @@ int adreno_ringbuffer_issuecmds(struct adreno_ringbuffer *rb,
+ void adreno_ringbuffer_submit(struct adreno_ringbuffer *rb,
+ 		struct adreno_submit_time *time);
+ 
+-int adreno_ringbuffer_submit_spin_nosync(struct adreno_ringbuffer *rb,
+-		struct adreno_submit_time *time, unsigned int timeout);
+-
+ int adreno_ringbuffer_submit_spin(struct adreno_ringbuffer *rb,
+ 		struct adreno_submit_time *time, unsigned int timeout);
+ 
+-- 
+2.15.0
+

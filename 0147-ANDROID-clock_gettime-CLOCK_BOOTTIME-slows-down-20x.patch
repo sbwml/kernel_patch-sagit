@@ -1,0 +1,142 @@
+From 1995c925945e5366a2ddc688c874e839fdeb3430 Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Wed, 24 Jan 2018 14:00:19 -0800
+Subject: [PATCH 147/420] ANDROID: clock_gettime(CLOCK_BOOTTIME,) slows down
+ >20x
+
+clock_gettime(CLOCK_BOOTTIME,) slows down after significant
+accumulation of suspend time creating a large offset between it and
+CLOCK_MONOTONIC time.  The __iter_div_u64_rem() is only for the usage
+of adding a few second+nanosecond times and saving cycles on more
+expensive remainder and division operations, but iterates one second
+at a time which quickly goes out of scale in CLOCK_BOOTTIME's case
+since it was specified as nanoseconds only.
+
+The fix is to split off seconds from the boot time and cap the
+nanoseconds so that __iter_div_u64_rem does not iterate.
+
+Signed-off-by: Mark Salyzyn <salyzyn@google.com>
+Bug: 72406285
+Change-Id: Ia647ef1e76b7ba3b0c003028d4b3b955635adabb
+---
+ arch/arm/include/asm/vdso_datapage.h   | 3 ++-
+ arch/arm/kernel/vdso.c                 | 5 ++++-
+ arch/arm64/include/asm/vdso_datapage.h | 3 ++-
+ arch/arm64/kernel/vdso.c               | 5 ++++-
+ arch/arm64/kernel/vdso32/compiler.h    | 2 ++
+ lib/vdso/vgettimeofday.c               | 5 +++--
+ 6 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm/include/asm/vdso_datapage.h b/arch/arm/include/asm/vdso_datapage.h
+index 1adfb2daac3a..0120852b6b12 100644
+--- a/arch/arm/include/asm/vdso_datapage.h
++++ b/arch/arm/include/asm/vdso_datapage.h
+@@ -64,7 +64,8 @@ struct vdso_data {
+ 	u32 tz_minuteswest;	/* timezone info for gettimeofday(2) */
+ 	u32 tz_dsttime;
+ 
+-	u64 btm_nsec;		/* monotonic to boot time */
++	u32 btm_sec;		/* monotonic to boot time */
++	u32 btm_nsec;
+ 	/* Raw clocksource multipler */
+ 	u32 cs_raw_mult;
+ 	/* Raw time */
+diff --git a/arch/arm/kernel/vdso.c b/arch/arm/kernel/vdso.c
+index 8c56e03e7b60..b3d40e416398 100644
+--- a/arch/arm/kernel/vdso.c
++++ b/arch/arm/kernel/vdso.c
+@@ -320,6 +320,8 @@ void update_vsyscall(struct timekeeper *tk)
+ 	vdso_data->wtm_clock_nsec		= wtm->tv_nsec;
+ 
+ 	if (!vdso_data->use_syscall) {
++		struct timespec btm = ktime_to_timespec(tk->offs_boot);
++
+ 		vdso_data->cs_cycle_last	= tk->tkr_mono.cycle_last;
+ 		vdso_data->raw_time_sec		= tk->raw_sec;
+ 		vdso_data->raw_time_nsec	= tk->tkr_raw.xtime_nsec;
+@@ -330,7 +332,8 @@ void update_vsyscall(struct timekeeper *tk)
+ 		/* tkr_mono.shift == tkr_raw.shift */
+ 		vdso_data->cs_shift		= tk->tkr_mono.shift;
+ 		vdso_data->cs_mask		= tk->tkr_mono.mask;
+-		vdso_data->btm_nsec		= ktime_to_ns(tk->offs_boot);
++		vdso_data->btm_sec		= btm.tv_sec;
++		vdso_data->btm_nsec		= btm.tv_nsec;
+ 	}
+ 
+ 	vdso_write_end(vdso_data);
+diff --git a/arch/arm64/include/asm/vdso_datapage.h b/arch/arm64/include/asm/vdso_datapage.h
+index e4fa5e054708..348b9be9efe7 100644
+--- a/arch/arm64/include/asm/vdso_datapage.h
++++ b/arch/arm64/include/asm/vdso_datapage.h
+@@ -45,7 +45,8 @@ struct vdso_data {
+ 	__u64 xtime_coarse_nsec;
+ 	__u64 wtm_clock_sec;	/* Wall to monotonic time */
+ 	vdso_wtm_clock_nsec_t wtm_clock_nsec;
+-	__u64 btm_nsec;		/* monotonic to boot time */
++	__u32 btm_sec;		/* monotonic to boot time */
++	__u32 btm_nsec;
+ 	__u32 tb_seq_count;	/* Timebase sequence counter */
+ 	/* cs_* members must be adjacent and in this order (ldp accesses) */
+ 	__u32 cs_mono_mult;	/* NTP-adjusted clocksource multiplier */
+diff --git a/arch/arm64/kernel/vdso.c b/arch/arm64/kernel/vdso.c
+index eee378dc4cc9..91f541a1bdb1 100644
+--- a/arch/arm64/kernel/vdso.c
++++ b/arch/arm64/kernel/vdso.c
+@@ -329,6 +329,8 @@ void update_vsyscall(struct timekeeper *tk)
+ 	vdso_data->wtm_clock_nsec		= tk->wall_to_monotonic.tv_nsec;
+ 
+ 	if (!use_syscall) {
++		struct timespec btm = ktime_to_timespec(tk->offs_boot);
++
+ 		/* tkr_mono.cycle_last == tkr_raw.cycle_last */
+ 		vdso_data->cs_cycle_last	= tk->tkr_mono.cycle_last;
+ 		vdso_data->raw_time_sec         = tk->raw_sec;
+@@ -339,7 +341,8 @@ void update_vsyscall(struct timekeeper *tk)
+ 		vdso_data->cs_raw_mult		= tk->tkr_raw.mult;
+ 		/* tkr_mono.shift == tkr_raw.shift */
+ 		vdso_data->cs_shift		= tk->tkr_mono.shift;
+-		vdso_data->btm_nsec		= ktime_to_ns(tk->offs_boot);
++		vdso_data->btm_sec		= btm.tv_sec;
++		vdso_data->btm_nsec		= btm.tv_nsec;
+ 	}
+ 
+ 	smp_wmb();
+diff --git a/arch/arm64/kernel/vdso32/compiler.h b/arch/arm64/kernel/vdso32/compiler.h
+index a2ac3959518a..19a43fc37bb9 100644
+--- a/arch/arm64/kernel/vdso32/compiler.h
++++ b/arch/arm64/kernel/vdso32/compiler.h
+@@ -23,6 +23,8 @@
+ #ifndef __VDSO_COMPILER_H
+ #define __VDSO_COMPILER_H
+ 
++#include <generated/autoconf.h>
++#undef CONFIG_64BIT
+ #include <asm/barrier.h>	/* for isb() & dmb()	*/
+ #include <asm/param.h>		/* for HZ		*/
+ #include <asm/unistd32.h>
+diff --git a/lib/vdso/vgettimeofday.c b/lib/vdso/vgettimeofday.c
+index 00d93df8045f..8ca2b5374c2d 100644
+--- a/lib/vdso/vgettimeofday.c
++++ b/lib/vdso/vgettimeofday.c
+@@ -252,7 +252,8 @@ static notrace int do_monotonic_raw(const struct vdso_data *vd,
+ static notrace int do_boottime(const struct vdso_data *vd, struct timespec *ts)
+ {
+ 	u32 seq, mult, shift;
+-	u64 nsec, cycle_last, wtm_nsec;
++	u64 nsec, cycle_last;
++	vdso_wtm_clock_nsec_t wtm_nsec;
+ #ifdef ARCH_CLOCK_FIXED_MASK
+ 	static const u64 mask = ARCH_CLOCK_FIXED_MASK;
+ #else
+@@ -277,7 +278,7 @@ static notrace int do_boottime(const struct vdso_data *vd, struct timespec *ts)
+ 		sec = vd->xtime_clock_sec;
+ 		nsec = vd->xtime_clock_snsec;
+ 
+-		sec += vd->wtm_clock_sec;
++		sec += vd->wtm_clock_sec + vd->btm_sec;
+ 		wtm_nsec = vd->wtm_clock_nsec + vd->btm_nsec;
+ 
+ 	} while (unlikely(vdso_read_retry(vd, seq)));
+-- 
+2.15.0
+

@@ -1,0 +1,47 @@
+From 022340a0e839107e81caea7286452ac8b12d33e6 Mon Sep 17 00:00:00 2001
+From: Dustin Brown <dustinb@codeaurora.org>
+Date: Thu, 22 Mar 2018 12:40:00 -0700
+Subject: [PATCH 016/420] staging: qca-wifi-host-cmn: Featurize QDF_ASSERT
+
+QDF_ASSERT is not properly featurized with its own build time config
+flag. This leads to unnecessary logs and increased driver size for
+platforms which do not want the feature enabled. Use the newly
+introduced WLAN_WARN_ON_ASSERT build time flag to decide if QDF_ASSERT
+should be a no-op.
+
+Change-Id: I39e3ab6499210569b6ce09d77ee72f0081741989
+CRs-Fixed: 2211983
+---
+ drivers/staging/qca-wifi-host-cmn/qdf/linux/src/i_qdf_trace.h | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/i_qdf_trace.h b/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/i_qdf_trace.h
+index 8b21cd7db0dd..1fafc1a723f1 100644
+--- a/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/i_qdf_trace.h
++++ b/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/i_qdf_trace.h
+@@ -83,6 +83,7 @@
+ 
+ #ifdef QDF_ENABLE_TRACING
+ 
++#ifdef WLAN_WARN_ON_ASSERT
+ #define QDF_ASSERT(_condition) \
+ 	do { \
+ 		if (!(_condition)) { \
+@@ -91,6 +92,14 @@
+ 			WARN_ON(1); \
+ 		} \
+ 	} while (0)
++#else
++#define QDF_ASSERT(_condition) \
++	do { \
++		if (!(_condition)) { \
++			/* no-op */ \
++		} \
++	} while (0)
++#endif /* WLAN_WARN_ON_ASSERT */
+ 
+ #else
+ 
+-- 
+2.15.0
+

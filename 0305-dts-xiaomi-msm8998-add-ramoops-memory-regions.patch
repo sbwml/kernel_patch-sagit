@@ -1,0 +1,46 @@
+From d38afc9de9cf765e84b129807ffb5cae4d24a02d Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Sun, 19 Nov 2017 22:43:36 +0200
+Subject: [PATCH 305/420] dts: xiaomi: msm8998: add ramoops memory regions
+
+Change-Id: I6c7f2e1545251857d83ccd7783f647dee2412c97
+---
+ arch/arm/boot/dts/qcom/xiaomi/msm8998.dtsi | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm8998.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm8998.dtsi
+index 3227d9387f52..843d86965038 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm8998.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm8998.dtsi
+@@ -54,6 +54,12 @@
+ 			no-map;
+ 			reg = <0 0x8b200000 0 0x1e00000>;
+  		};
++
++		ramoops_mem: ramoops_region@b0000000 {
++			compatible = "removed-dma-pool";
++			no-map;
++			reg = <0 0xb0000000 0 0x200000>;
++		};
+ 	};
+ };
+ 
+@@ -99,6 +105,15 @@
+ 			qcom,sensor-name = "limits_sensor-02";
+ 		};
+ 	};
++
++	ramoops {
++		compatible = "ramoops";
++		status = "ok";
++		memory-region = <&ramoops_mem>;
++		console-size = <0x0 0x100000>; /* 1024 KB */
++		pmsg-size = <0x0 0x80000>; /* 512 KB */
++		record-size = <0x0 0x20000>; /* 128 KB */
++	};
+ };
+ 
+ &wdog {
+-- 
+2.15.0
+

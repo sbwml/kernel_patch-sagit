@@ -1,0 +1,32 @@
+From cf2e327a07d4b07f0c80f24ccacbed56f190e4e8 Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Mon, 2 Apr 2018 02:18:25 +0000
+Subject: [PATCH 117/420] dts: msm8998: disable hotplug in BCL mitigation
+
+Bug: 63165849
+Test: boot
+Change-Id: Icc1131578be0a02542376d34e4f5cc7c53156bd9
+Signed-off-by: Wei Wang <wvw@google.com>
+Signed-off-by: joshuous <joshuous@gmail.com>
+---
+ arch/arm/boot/dts/qcom/msm8998.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/qcom/msm8998.dtsi b/arch/arm/boot/dts/qcom/msm8998.dtsi
+index 7f87a45509e6..ae664e48afff 100644
+--- a/arch/arm/boot/dts/qcom/msm8998.dtsi
++++ b/arch/arm/boot/dts/qcom/msm8998.dtsi
+@@ -2766,8 +2766,8 @@
+ 		qcom,bcl-enable;
+ 		qcom,bcl-framework-interface;
+ 		qcom,bcl-freq-control-list = <&CPU4 &CPU5 &CPU6 &CPU7>;
+-		qcom,bcl-hotplug-list = <&CPU4 &CPU5 &CPU6 &CPU7>;
+-		qcom,bcl-soc-hotplug-list = <&CPU4 &CPU5 &CPU6 &CPU7>;
++		qcom,bcl-hotplug-list = <>;
++		qcom,bcl-soc-hotplug-list = <>;
+ 		qcom,ibat-monitor {
+ 			qcom,low-threshold-uamp = <3400000>;
+ 			qcom,high-threshold-uamp = <4200000>;
+-- 
+2.15.0
+

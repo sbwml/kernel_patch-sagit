@@ -1,0 +1,49 @@
+From 64d5b7d882bb3821001c809059e9d04f8786457b Mon Sep 17 00:00:00 2001
+From: Jerry Zhang <zhangjerry@google.com>
+Date: Tue, 20 Feb 2018 11:00:06 -0800
+Subject: [PATCH 096/420] ANDROID: usb: gadget: f_accessory: Fix double-free
+
+Set the request to null to avoid double free in
+retry_rx_alloc.
+
+Bug: 73645054
+Test: no double free
+Change-Id: Iecf22c807a4a23b4b2ba7ebee53c53502c616ec5
+Signed-off-by: Jerry Zhang <zhangjerry@google.com>
+---
+ drivers/usb/gadget/function/f_accessory.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/gadget/function/f_accessory.c b/drivers/usb/gadget/function/f_accessory.c
+index fced02db3f5f..a2a73aa8f3da 100644
+--- a/drivers/usb/gadget/function/f_accessory.c
++++ b/drivers/usb/gadget/function/f_accessory.c
+@@ -610,8 +610,11 @@ retry_rx_alloc:
+ 		if (!req) {
+ 			if (acc_rx_req_len <= BULK_BUFFER_SIZE)
+ 				goto fail;
+-		for (i = 0; i < RX_REQ_MAX; i++)
+-			acc_request_free(dev->rx_req[i], dev->ep_out);
++			for (i = 0; i < RX_REQ_MAX; i++) {
++				acc_request_free(dev->rx_req[i],
++						dev->ep_out);
++				dev->rx_req[i] = NULL;
++			}
+ 			acc_rx_req_len /= 2;
+ 			goto retry_rx_alloc;
+ 		}
+@@ -625,8 +628,10 @@ fail:
+ 	pr_err("acc_bind() could not allocate requests\n");
+ 	while ((req = req_get(dev, &dev->tx_idle)))
+ 		acc_request_free(req, dev->ep_in);
+-	for (i = 0; i < RX_REQ_MAX; i++)
++	for (i = 0; i < RX_REQ_MAX; i++) {
+ 		acc_request_free(dev->rx_req[i], dev->ep_out);
++		dev->rx_req[i] = NULL;
++	}
+ 	return -1;
+ }
+ 
+-- 
+2.15.0
+

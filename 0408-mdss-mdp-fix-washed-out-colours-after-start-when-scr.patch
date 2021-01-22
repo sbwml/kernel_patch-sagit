@@ -1,0 +1,26 @@
+From 6a8605ca5c1818670c68a7d72c52d38bd1a533f7 Mon Sep 17 00:00:00 2001
+From: andip71 <andreasp@gmx.de>
+Date: Tue, 8 Aug 2017 10:19:25 +0200
+Subject: [PATCH 408/420] mdss mdp: fix washed out colours after start when
+ screen is off during kcal initialization
+
+---
+ drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c b/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c
+index a3b2e3661266..ebac74668e5d 100644
+--- a/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c
++++ b/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c
+@@ -574,7 +574,7 @@ static int mdss_mdp_kcal_update_queue(struct device *dev)
+ 	if (lut_data->queue_changes) {
+ 		mdss_mdp_kcal_update_pcc(lut_data);
+ 		mdss_mdp_kcal_update_pa(lut_data);
+-		mdss_mdp_kcal_update_igc(lut_data);
++		//mdss_mdp_kcal_update_igc(lut_data);
+ 		lut_data->queue_changes = false;
+ 	}
+ 
+-- 
+2.15.0
+

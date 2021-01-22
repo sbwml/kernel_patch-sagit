@@ -1,0 +1,108 @@
+From e81d2bf8fce836565ecec8e9cff40f889bc35436 Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Sun, 12 Feb 2017 23:23:11 +0200
+Subject: [PATCH 321/420] synaptics_dsx_force: symlink input device to
+ /proc/touchpanel
+
+Change-Id: I5bf1291aa22b889522585a3faeab5f96ff6612e2
+---
+ .../synaptics_dsx_force/synaptics_dsx_core.c       | 41 ++++++++++++++++++++++
+ .../synaptics_dsx_force/synaptics_dsx_core.h       |  2 ++
+ 2 files changed, 43 insertions(+)
+
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+index f4c0386f7900..2f474f1b4dc7 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+@@ -34,6 +34,7 @@
+ 
+ #include <linux/kernel.h>
+ #include <linux/module.h>
++#include <linux/proc_fs.h>
+ #include <linux/slab.h>
+ #include <linux/interrupt.h>
+ #include <linux/delay.h>
+@@ -62,6 +63,8 @@
+ #define INPUT_PHYS_NAME "synaptics_dsx/touch_input"
+ #define STYLUS_PHYS_NAME "synaptics_dsx/stylus"
+ 
++#define PROC_SYMLINK_PATH "touchpanel"
++
+ #define VIRTUAL_KEY_MAP_FILE_NAME "virtualkeys." PLATFORM_DRIVER_NAME
+ 
+ #ifdef KERNEL_ABOVE_2_6_38
+@@ -4021,6 +4024,36 @@ static int synaptics_rmi4_input_event(struct input_dev *dev,
+ 	return 0;
+ }
+ 
++static ssize_t synaptics_rmi4_input_symlink(struct synaptics_rmi4_data *rmi4_data) {
++	char *driver_path;
++	int ret = 0;
++
++	if (rmi4_data->input_proc) {
++		proc_remove(rmi4_data->input_proc);
++		rmi4_data->input_proc = NULL;
++	}
++
++	driver_path = kzalloc(PATH_MAX, GFP_KERNEL);
++	if (!driver_path) {
++		pr_err("%s: failed to allocate memory\n", __func__);
++		return -ENOMEM;
++	}
++
++	sprintf(driver_path, "/sys%s",
++			kobject_get_path(&rmi4_data->input_dev->dev.kobj, GFP_KERNEL));
++
++	pr_debug("%s: driver_path=%s\n", __func__, driver_path);
++
++	rmi4_data->input_proc = proc_symlink(PROC_SYMLINK_PATH, NULL, driver_path);
++	if (!rmi4_data->input_proc) {
++		ret = -ENOMEM;
++	}
++
++	kfree(driver_path);
++
++	return ret;
++}
++
+ static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
+ {
+ 	int retval;
+@@ -4074,6 +4107,13 @@ static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
+ 		goto err_register_input;
+ 	}
+ 
++	retval = synaptics_rmi4_input_symlink(rmi4_data);
++	if (retval < 0) {
++		dev_err(rmi4_data->pdev->dev.parent,
++				"%s: Failed to symlink input device\n",
++				__func__);
++	}
++
+ 	if (!rmi4_data->stylus_enable)
+ 		return 0;
+ 
+@@ -4981,6 +5021,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
+ 	rmi4_data->fingers_on_2d = false;
+ 	rmi4_data->wakeup_en = false;
+ 	rmi4_data->enable_reversed_keys = false;
++	rmi4_data->input_proc = NULL;
+ 
+ 	rmi4_data->reset_device = synaptics_rmi4_reset_device;
+ 	rmi4_data->irq_enable = synaptics_rmi4_irq_enable;
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h
+index 37dd1cdf74b6..718c11e351bb 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h
+@@ -436,6 +436,8 @@ struct synaptics_rmi4_data {
+ 	struct clk *core_clk;
+ 	struct clk *iface_clk;
+ #endif
++
++	struct proc_dir_entry *input_proc;
+ };
+ 
+ struct synaptics_dsx_bus_access {
+-- 
+2.15.0
+

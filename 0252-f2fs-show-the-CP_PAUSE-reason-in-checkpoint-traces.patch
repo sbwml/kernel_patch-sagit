@@ -1,0 +1,44 @@
+From b5758eb474bfa2e426e149d312b55e34063c0f28 Mon Sep 17 00:00:00 2001
+From: Sahitya Tummala <stummala@codeaurora.org>
+Date: Fri, 3 Jan 2020 08:49:28 +0530
+Subject: [PATCH 252/420] f2fs: show the CP_PAUSE reason in checkpoint traces
+
+Remove the duplicate CP_UMOUNT enum and add the new CP_PAUSE
+enum to show the checkpoint reason in the trace prints.
+
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ include/trace/events/f2fs.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/include/trace/events/f2fs.h b/include/trace/events/f2fs.h
+index b6850fe5465f..c5de2e36a741 100644
+--- a/include/trace/events/f2fs.h
++++ b/include/trace/events/f2fs.h
+@@ -45,6 +45,7 @@ TRACE_DEFINE_ENUM(CP_SYNC);
+ TRACE_DEFINE_ENUM(CP_RECOVERY);
+ TRACE_DEFINE_ENUM(CP_DISCARD);
+ TRACE_DEFINE_ENUM(CP_TRIMMED);
++TRACE_DEFINE_ENUM(CP_PAUSE);
+ 
+ #define show_block_type(type)						\
+ 	__print_symbolic(type,						\
+@@ -121,11 +122,12 @@ TRACE_DEFINE_ENUM(CP_TRIMMED);
+ 
+ #define show_cpreason(type)						\
+ 	__print_symbolic(type,						\
+-		{ CP_UMOUNT,	"Umount" },				\
++		{ CP_UMOUNT,    "Umount" },                             \
+ 		{ CP_FASTBOOT,	"Fastboot" },				\
+ 		{ CP_SYNC,	"Sync" },				\
+ 		{ CP_RECOVERY,	"Recovery" },				\
+ 		{ CP_DISCARD,	"Discard" },				\
++		{ CP_PAUSE,	"Pause" },				\
+ 		{ CP_UMOUNT | CP_TRIMMED,	"Umount,Trimmed" })
+ 
+ #define show_fsync_cpreason(type)					\
+-- 
+2.15.0
+

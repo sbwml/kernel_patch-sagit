@@ -1,0 +1,30 @@
+From afc224f0b91d7c481b2539f086d3528ad931ed72 Mon Sep 17 00:00:00 2001
+From: flar2 <asegaert@gmail.com>
+Date: Tue, 13 Jun 2017 22:14:35 -0400
+Subject: [PATCH 413/420] qpnp-haptic: expose vibrate function
+
+Change-Id: I91604f6b946940c7a2681720c683010538b222e8
+Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
+---
+ drivers/soc/qcom/qpnp-haptic.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/soc/qcom/qpnp-haptic.c b/drivers/soc/qcom/qpnp-haptic.c
+index d8f7c227207c..81fd9e9005ff 100644
+--- a/drivers/soc/qcom/qpnp-haptic.c
++++ b/drivers/soc/qcom/qpnp-haptic.c
+@@ -2350,6 +2350,11 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int time_ms)
+ 	schedule_work(&hap->td_work);
+ }
+ 
++void set_vibrate(int value)
++{
++	qpnp_hap_td_enable(&ghap->timed_dev, value);
++}
++
+ /* play pwm bytes */
+ int qpnp_hap_play_byte(u8 data, bool on)
+ {
+-- 
+2.15.0
+

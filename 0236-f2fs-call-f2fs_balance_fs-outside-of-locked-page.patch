@@ -1,0 +1,63 @@
+From 032a1872d22eb8a8610ff187f99ac978a57a85de Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Tue, 3 Dec 2019 15:53:16 -0800
+Subject: [PATCH 236/420] f2fs: call f2fs_balance_fs outside of locked page
+
+Otherwise, we can hit deadlock by waiting for the locked page in
+move_data_block in GC.
+
+ Thread A                     Thread B
+ - do_page_mkwrite
+  - f2fs_vm_page_mkwrite
+   - lock_page
+                              - f2fs_balance_fs
+                                  - mutex_lock(gc_mutex)
+                               - f2fs_gc
+                                - do_garbage_collect
+                                 - ra_data_block
+                                  - grab_cache_page
+   - f2fs_balance_fs
+    - mutex_lock(gc_mutex)
+
+Fixes: 39a8695824510 ("f2fs: refactor ->page_mkwrite() flow")
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 2a39c04dc094..66a996df4abd 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -52,7 +52,7 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
+ 	struct page *page = vmf->page;
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+-	struct dnode_of_data dn = { .node_changed = false };
++	struct dnode_of_data dn;
+ 	int err;
+ 
+ 	if (unlikely(f2fs_cp_error(sbi))) {
+@@ -65,6 +65,9 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
+ 		goto err;
+ 	}
+ 
++	/* should do out of any locked page */
++	f2fs_balance_fs(sbi, true);
++
+ 	sb_start_pagefault(inode->i_sb);
+ 
+ 	f2fs_bug_on(sbi, f2fs_has_inline_data(inode));
+@@ -122,8 +125,6 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
+ out_sem:
+ 	up_read(&F2FS_I(inode)->i_mmap_sem);
+ 
+-	f2fs_balance_fs(sbi, dn.node_changed);
+-
+ 	sb_end_pagefault(inode->i_sb);
+ err:
+ 	return block_page_mkwrite_return(err);
+-- 
+2.15.0
+

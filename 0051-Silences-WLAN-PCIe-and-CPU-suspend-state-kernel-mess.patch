@@ -1,0 +1,138 @@
+From 434d460aca42cad621ea9db97d07adb78fd70dfd Mon Sep 17 00:00:00 2001
+From: Nick Desaulniers <ndesaulniers@google.com>
+Date: Tue, 23 Feb 2016 14:12:49 -0800
+Subject: [PATCH 051/420] Silences WLAN, PCIe, and CPU suspend state kernel
+ messages
+
+Bug: 27134656
+Change-Id: I681ec2171472514489365ca4bfc4ef16d9b344fe
+---
+ drivers/net/wireless/cnss/cnss_pci.c |  4 ++--
+ drivers/pci/host/pci-msm.c           | 16 ++++++++--------
+ drivers/pci/pci.c                    |  2 +-
+ kernel/cpu.c                         |  4 ++--
+ 4 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/net/wireless/cnss/cnss_pci.c b/drivers/net/wireless/cnss/cnss_pci.c
+index a8a5eeade813..7d71f67c8fba 100644
+--- a/drivers/net/wireless/cnss/cnss_pci.c
++++ b/drivers/net/wireless/cnss/cnss_pci.c
+@@ -1835,7 +1835,7 @@ static int cnss_wlan_runtime_suspend(struct device *dev)
+ 	if (wdrv && wdrv->runtime_ops && wdrv->runtime_ops->runtime_suspend)
+ 		ret = wdrv->runtime_ops->runtime_suspend(to_pci_dev(dev));
+ 
+-	pr_info("cnss: runtime suspend status: %d\n", ret);
++	pr_debug("cnss: runtime suspend status: %d\n", ret);
+ 
+ 	return ret;
+ 
+@@ -1861,7 +1861,7 @@ static int cnss_wlan_runtime_resume(struct device *dev)
+ 	if (wdrv && wdrv->runtime_ops && wdrv->runtime_ops->runtime_resume)
+ 		ret = wdrv->runtime_ops->runtime_resume(to_pci_dev(dev));
+ 
+-	pr_info("cnss: runtime resume status: %d\n", ret);
++	pr_debug("cnss: runtime resume status: %d\n", ret);
+ 
+ 	return ret;
+ }
+diff --git a/drivers/pci/host/pci-msm.c b/drivers/pci/host/pci-msm.c
+index 9be5d601d38a..87b0abfacb87 100644
+--- a/drivers/pci/host/pci-msm.c
++++ b/drivers/pci/host/pci-msm.c
+@@ -4520,7 +4520,7 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
+ 
+ 	/* assert PCIe reset link to keep EP in reset */
+ 
+-	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
++	PCIE_DBG(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+ 		dev->rc_idx);
+ 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
+ 				dev->gpio[MSM_PCIE_GPIO_PERST].on);
+@@ -4640,7 +4640,7 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
+ 		dev->rc_idx, retries);
+ 
+ 	if (pcie_phy_is_ready(dev))
+-		PCIE_INFO(dev, "PCIe RC%d PHY is ready!\n", dev->rc_idx);
++		PCIE_DBG(dev, "PCIe RC%d PHY is ready!\n", dev->rc_idx);
+ 	else {
+ 		PCIE_ERR(dev, "PCIe PHY RC%d failed to come up!\n",
+ 			dev->rc_idx);
+@@ -4660,7 +4660,7 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
+ 
+ 	/* de-assert PCIe reset link to bring EP out of reset */
+ 
+-	PCIE_INFO(dev, "PCIe: Release the reset of endpoint of RC%d.\n",
++	PCIE_DBG(dev, "PCIe: Release the reset of endpoint of RC%d.\n",
+ 		dev->rc_idx);
+ 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
+ 				1 - dev->gpio[MSM_PCIE_GPIO_PERST].on);
+@@ -4689,9 +4689,9 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
+ 		msm_pcie_confirm_linkup(dev, false, false, NULL)) {
+ 		PCIE_DBG(dev, "Link is up after %d checkings\n",
+ 			link_check_count);
+-		PCIE_INFO(dev, "PCIe RC%d link initialized\n", dev->rc_idx);
++		PCIE_DBG(dev, "PCIe RC%d link initialized\n", dev->rc_idx);
+ 	} else {
+-		PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
++		PCIE_DBG(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+ 			dev->rc_idx);
+ 		gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
+ 			dev->gpio[MSM_PCIE_GPIO_PERST].on);
+@@ -4774,7 +4774,7 @@ void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
+ 	dev->power_on = false;
+ 	dev->link_turned_off_counter++;
+ 
+-	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
++	PCIE_DBG(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+ 		dev->rc_idx);
+ 
+ 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
+@@ -6736,8 +6736,8 @@ module_exit(pcie_exit);
+ /* RC do not represent the right class; set it to PCI_CLASS_BRIDGE_PCI */
+ static void msm_pcie_fixup_early(struct pci_dev *dev)
+ {
+-	struct msm_pcie_dev_t *pcie_dev = PCIE_BUS_PRIV_DATA(dev->bus);
+-	PCIE_DBG(pcie_dev, "hdr_type %d\n", dev->hdr_type);
++	PCIE_DBG((struct msm_pcie_dev_t*)PCIE_BUS_PRIV_DATA(dev->bus), "hdr_type %d\n",
++		dev->hdr_type);
+ 	if (dev->hdr_type == 1)
+ 		dev->class = (dev->class & 0xff) | (PCI_CLASS_BRIDGE_PCI << 8);
+ }
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index b7f65fc54dc2..8a12b5392b8f 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -650,7 +650,7 @@ static int pci_raw_set_power_state(struct pci_dev *dev, pci_power_t state)
+ 	pci_read_config_word(dev, dev->pm_cap + PCI_PM_CTRL, &pmcsr);
+ 	dev->current_state = (pmcsr & PCI_PM_CTRL_STATE_MASK);
+ 	if (dev->current_state != state && printk_ratelimit())
+-		dev_info(&dev->dev, "Refused to change power state, currently in D%d\n",
++		dev_dbg(&dev->dev, "Refused to change power state, currently in D%d\n",
+ 			 dev->current_state);
+ 
+ 	/*
+diff --git a/kernel/cpu.c b/kernel/cpu.c
+index de267a034b56..223f8f208df1 100644
+--- a/kernel/cpu.c
++++ b/kernel/cpu.c
+@@ -648,7 +648,7 @@ int disable_nonboot_cpus(void)
+ 	 */
+ 	cpumask_clear(frozen_cpus);
+ 
+-	pr_info("Disabling non-boot CPUs ...\n");
++	pr_debug("Disabling non-boot CPUs ...\n");
+ 	for_each_online_cpu(cpu) {
+ 		if (cpu == first_cpu)
+ 			continue;
+@@ -698,7 +698,7 @@ void enable_nonboot_cpus(void)
+ 	if (cpumask_empty(frozen_cpus))
+ 		goto out;
+ 
+-	pr_info("Enabling non-boot CPUs ...\n");
++	pr_debug("Enabling non-boot CPUs ...\n");
+ 
+ 	arch_enable_nonboot_cpus_begin();
+ 
+-- 
+2.15.0
+

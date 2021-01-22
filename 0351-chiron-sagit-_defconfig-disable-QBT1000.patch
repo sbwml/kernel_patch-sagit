@@ -1,0 +1,41 @@
+From ec23b19a64d2e1b18da9d1743e445f45c0e31d4a Mon Sep 17 00:00:00 2001
+From: Chris Fries <cfries@google.com>
+Date: Mon, 5 Feb 2018 16:38:59 -0600
+Subject: [PATCH 351/420] {chiron,sagit}_defconfig: disable QBT1000
+
+Remove Qualcomm's fingerprint solution.
+
+Change-Id: I6782ee5413ac28a1bc338943fc7732dafd41da75
+Signed-off-by: Chris Fries <cfries@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 -
+ arch/arm64/configs/sagit_defconfig  | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 92beef34b694..572bbb473efe 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -575,7 +575,6 @@ CONFIG_MSM_MPM_OF=y
+ CONFIG_MSM_EVENT_TIMER=y
+ CONFIG_MSM_AVTIMER=y
+ CONFIG_MSM_SERVICE_NOTIFIER=y
+-CONFIG_MSM_QBT1000=y
+ CONFIG_MSM_RPM_RBCPR_STATS_V2_LOG=y
+ CONFIG_MSM_RPM_STATS_LOG=y
+ CONFIG_QSEE_IPC_IRQ_BRIDGE=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 92beef34b694..572bbb473efe 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -575,7 +575,6 @@ CONFIG_MSM_MPM_OF=y
+ CONFIG_MSM_EVENT_TIMER=y
+ CONFIG_MSM_AVTIMER=y
+ CONFIG_MSM_SERVICE_NOTIFIER=y
+-CONFIG_MSM_QBT1000=y
+ CONFIG_MSM_RPM_RBCPR_STATS_V2_LOG=y
+ CONFIG_MSM_RPM_STATS_LOG=y
+ CONFIG_QSEE_IPC_IRQ_BRIDGE=y
+-- 
+2.15.0
+

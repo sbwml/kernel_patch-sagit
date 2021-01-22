@@ -1,0 +1,99 @@
+From aa968db552a58a2dda81e441de8e7ae456ab73b5 Mon Sep 17 00:00:00 2001
+From: Iliyan Malchev <malchev@google.com>
+Date: Thu, 23 Apr 2015 14:53:38 -0700
+Subject: [PATCH 078/420] PM: wakeup_reasons: fix race condition
+
+log_possible_wakeup_reason() and stop_logging_wakeup_reasons() can race, as the
+latter can be called from process context, and both can run on separate cores.
+
+Change-Id: I306441d0be46dd4fe58c55cdc162f9d61a28c27d
+Signed-off-by: Iliyan Malchev <malchev@google.com>
+---
+ include/linux/wakeup_reason.h | 10 ++++++++--
+ kernel/irq/irqdesc.c          |  2 +-
+ kernel/power/wakeup_reason.c  | 11 +++++++++--
+ 3 files changed, 18 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/wakeup_reason.h b/include/linux/wakeup_reason.h
+index a26b1c998139..ca6226cc1c55 100644
+--- a/include/linux/wakeup_reason.h
++++ b/include/linux/wakeup_reason.h
+@@ -61,16 +61,22 @@ static inline void start_logging_wakeup_reasons(void)
+ {
+ 	extern bool log_wakeups;
+ 	extern struct completion wakeups_completion;
+-	log_wakeups = true;
++	ACCESS_ONCE(log_wakeups) = true;
+ 	init_completion(&wakeups_completion);
+ }
+ 
+-static inline bool logging_wakeup_reasons(void)
++static inline bool logging_wakeup_reasons_nosync(void)
+ {
+ 	extern bool log_wakeups;
+ 	return ACCESS_ONCE(log_wakeups);
+ }
+ 
++static inline bool logging_wakeup_reasons(void)
++{
++	smp_rmb();
++	return logging_wakeup_reasons_nosync();
++}
++
+ void log_base_wakeup_reason(int irq);
+ 
+ void log_suspend_abort_reason(const char *fmt, ...);
+diff --git a/kernel/irq/irqdesc.c b/kernel/irq/irqdesc.c
+index a935c1bb768e..52fbf88cd2d8 100644
+--- a/kernel/irq/irqdesc.c
++++ b/kernel/irq/irqdesc.c
+@@ -353,7 +353,7 @@ int generic_handle_irq(unsigned int irq)
+ 	if (!desc)
+ 		return -EINVAL;
+ 
+-	if (unlikely(logging_wakeup_reasons()))
++	if (unlikely(logging_wakeup_reasons_nosync()))
+ 		return log_possible_wakeup_reason(irq,
+ 				desc,
+ 				generic_handle_irq_desc);
+diff --git a/kernel/power/wakeup_reason.c b/kernel/power/wakeup_reason.c
+index 8d509428487b..e8c60538f3f7 100644
+--- a/kernel/power/wakeup_reason.c
++++ b/kernel/power/wakeup_reason.c
+@@ -293,6 +293,7 @@ static struct attribute_group attr_group = {
+ static inline void stop_logging_wakeup_reasons(void)
+ {
+ 	ACCESS_ONCE(log_wakeups) = false;
++	smp_wmb();
+ }
+ 
+ /*
+@@ -330,9 +331,16 @@ void log_base_wakeup_reason(int irq)
+ struct wakeup_irq_node *
+ log_possible_wakeup_reason_start(int irq, struct irq_desc *desc, unsigned depth)
+ {
+-	BUG_ON(!irqs_disabled() || !logging_wakeup_reasons());
++	BUG_ON(!irqs_disabled());
+ 	BUG_ON((signed)depth < 0);
+ 
++	/* This function can race with a call to stop_logging_wakeup_reasons()
++	 * from a thread context.  If this happens, just exit silently, as we are no
++	 * longer interested in logging interrupts.
++	 */
++	if (!logging_wakeup_reasons())
++		return NULL;
++
+ 	/* If suspend was aborted, the base IRQ nodes are missing, and we stop
+ 	 * logging interrupts immediately.
+ 	 */
+@@ -540,7 +548,6 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
+ 		/* log_wakeups should have been cleared by now. */
+ 		if (WARN_ON(logging_wakeup_reasons())) {
+ 			stop_logging_wakeup_reasons();
+-			mb();
+ 			print_wakeup_sources();
+ 		}
+ 		/* monotonic time since boot */
+-- 
+2.15.0
+

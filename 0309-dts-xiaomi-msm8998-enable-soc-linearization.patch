@@ -1,0 +1,38 @@
+From 4298e11881d7bd299479cdbc9372623ef79ba099 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Fri, 1 Jun 2018 07:41:29 +0000
+Subject: [PATCH 309/420] dts: xiaomi: msm8998: enable soc linearization
+
+Change-Id: I11e338d903af802e7dc14979d24c896a9afd90a5
+---
+ arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi | 1 +
+ arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
+index bef28d1ee299..b74eb9bc7ac9 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
+@@ -797,6 +797,7 @@
+ 	qcom,fg-jeita-thresholds = <0 15 45 60>;
+ 	qcom,fg-esr-clamp-mohms = <60>;
+ 	qcom,fg-batt-temp-delta = <6>;
++	qcom,linearize-soc;
+ };
+ 
+ /{
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
+index ffc2d1e15c63..f5b7f2ce309e 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
+@@ -841,6 +841,7 @@
+ 	qcom,fg-jeita-thresholds = <0 15 45 60>;
+ 	qcom,fg-esr-clamp-mohms = <60>;
+ 	qcom,fg-batt-temp-delta = <6>;
++	qcom,linearize-soc;
+ };
+ 
+ /{
+-- 
+2.15.0
+

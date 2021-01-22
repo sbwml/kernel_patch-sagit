@@ -1,0 +1,65 @@
+From 20c845145761b9ea3c784104dc70bc646594b359 Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Wed, 28 Feb 2018 23:16:10 +0000
+Subject: [PATCH 382/420] {chiron,sagit}_defconfig: enable support for sdFAT
+ filesystem
+
+ * Update default charset for FAT to UTF-8, matching sdFAT's default.
+
+Change-Id: I7b33b5f24e079509a47a35b3aeb06b269cdc86eb
+---
+ arch/arm64/configs/chiron_defconfig | 6 ++++--
+ arch/arm64/configs/sagit_defconfig  | 6 ++++--
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index cae3e426acbc..9e5a22ca7301 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -673,6 +673,10 @@ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+ CONFIG_FUSE_FS=y
+ CONFIG_VFAT_FS=y
++CONFIG_FAT_DEFAULT_IOCHARSET="utf8"
++CONFIG_SDFAT_SUPPORT_DIR_SYNC=y
++CONFIG_SDFAT_CHECK_RO_ATTR=y
++# CONFIG_SDFAT_DEBUG is not set
+ CONFIG_TMPFS=y
+ CONFIG_TMPFS_POSIX_ACL=y
+ CONFIG_SDCARD_FS=y
+@@ -680,8 +684,6 @@ CONFIG_PSTORE=y
+ CONFIG_PSTORE_CONSOLE=y
+ CONFIG_PSTORE_PMSG=y
+ CONFIG_PSTORE_RAM=y
+-CONFIG_NLS_CODEPAGE_437=y
+-CONFIG_NLS_ISO8859_1=y
+ CONFIG_PRINTK_TIME=y
+ CONFIG_DEBUG_INFO=y
+ CONFIG_MAGIC_SYSRQ=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index a45c636fa118..6d9f0c4e8b16 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -673,6 +673,10 @@ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+ CONFIG_FUSE_FS=y
+ CONFIG_VFAT_FS=y
++CONFIG_FAT_DEFAULT_IOCHARSET="utf8"
++CONFIG_SDFAT_SUPPORT_DIR_SYNC=y
++CONFIG_SDFAT_CHECK_RO_ATTR=y
++# CONFIG_SDFAT_DEBUG is not set
+ CONFIG_TMPFS=y
+ CONFIG_TMPFS_POSIX_ACL=y
+ CONFIG_SDCARD_FS=y
+@@ -680,8 +684,6 @@ CONFIG_PSTORE=y
+ CONFIG_PSTORE_CONSOLE=y
+ CONFIG_PSTORE_PMSG=y
+ CONFIG_PSTORE_RAM=y
+-CONFIG_NLS_CODEPAGE_437=y
+-CONFIG_NLS_ISO8859_1=y
+ CONFIG_PRINTK_TIME=y
+ CONFIG_DEBUG_INFO=y
+ CONFIG_MAGIC_SYSRQ=y
+-- 
+2.15.0
+

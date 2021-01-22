@@ -1,0 +1,67 @@
+From be799cb49f9d7b63c6827d6c3b56ed22593650e0 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Fri, 8 May 2020 12:25:45 -0700
+Subject: [PATCH 276/420] f2fs: remove blk_plugging in block_operations
+
+blk_plugging doesn't seem to give any benefit.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/checkpoint.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index 114b7f8cabf2..6342ea3101da 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -1165,11 +1165,8 @@ static int block_operations(struct f2fs_sb_info *sbi)
+ 		.nr_to_write = LONG_MAX,
+ 		.for_reclaim = 0,
+ 	};
+-	struct blk_plug plug;
+ 	int err = 0, cnt = 0;
+ 
+-	blk_start_plug(&plug);
+-
+ retry_flush_quotas:
+ 	f2fs_lock_all(sbi);
+ 	if (__need_flush_quota(sbi)) {
+@@ -1197,7 +1194,7 @@ retry_flush_dents:
+ 		f2fs_unlock_all(sbi);
+ 		err = f2fs_sync_dirty_inodes(sbi, DIR_INODE);
+ 		if (err)
+-			goto out;
++			return err;
+ 		cond_resched();
+ 		goto retry_flush_quotas;
+ 	}
+@@ -1213,7 +1210,7 @@ retry_flush_dents:
+ 		f2fs_unlock_all(sbi);
+ 		err = f2fs_sync_inode_meta(sbi);
+ 		if (err)
+-			goto out;
++			return err;
+ 		cond_resched();
+ 		goto retry_flush_quotas;
+ 	}
+@@ -1229,7 +1226,7 @@ retry_flush_nodes:
+ 		if (err) {
+ 			up_write(&sbi->node_change);
+ 			f2fs_unlock_all(sbi);
+-			goto out;
++			return err;
+ 		}
+ 		cond_resched();
+ 		goto retry_flush_nodes;
+@@ -1241,8 +1238,6 @@ retry_flush_nodes:
+ 	 */
+ 	__prepare_cp_block(sbi);
+ 	up_write(&sbi->node_change);
+-out:
+-	blk_finish_plug(&plug);
+ 	return err;
+ }
+ 
+-- 
+2.15.0
+

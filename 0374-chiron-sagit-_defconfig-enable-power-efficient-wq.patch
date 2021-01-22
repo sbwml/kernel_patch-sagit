@@ -1,0 +1,38 @@
+From 081ddb50dd14acc062baa7c86262e9d81558cf6b Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Sun, 20 May 2018 05:01:26 +0000
+Subject: [PATCH 374/420] {chiron,sagit}_defconfig: enable power efficient wq
+
+Change-Id: I1a40ffe60a1e354eb09228fb98369eaf1c3b18ec
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 04840da7294c..cae3e426acbc 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -80,6 +80,7 @@ CONFIG_PM_AUTOSLEEP=y
+ CONFIG_PM_WAKELOCKS=y
+ CONFIG_PM_WAKELOCKS_LIMIT=0
+ # CONFIG_PM_WAKELOCKS_GC is not set
++CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
+ CONFIG_CPU_FREQ=y
+ CONFIG_CPU_FREQ_GOV_POWERSAVE=y
+ CONFIG_CPU_FREQ_GOV_USERSPACE=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index b6d5238a0c14..a45c636fa118 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -80,6 +80,7 @@ CONFIG_PM_AUTOSLEEP=y
+ CONFIG_PM_WAKELOCKS=y
+ CONFIG_PM_WAKELOCKS_LIMIT=0
+ # CONFIG_PM_WAKELOCKS_GC is not set
++CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
+ CONFIG_CPU_FREQ=y
+ CONFIG_CPU_FREQ_GOV_POWERSAVE=y
+ CONFIG_CPU_FREQ_GOV_USERSPACE=y
+-- 
+2.15.0
+

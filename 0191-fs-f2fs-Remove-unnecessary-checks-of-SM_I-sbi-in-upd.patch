@@ -1,0 +1,46 @@
+From c29251b8c3c5b1b36d3d002b6e0057b693223eb6 Mon Sep 17 00:00:00 2001
+From: Jia-Ju Bai <baijiaju1990@gmail.com>
+Date: Fri, 26 Jul 2019 11:45:12 +0800
+Subject: [PATCH 191/420] fs: f2fs: Remove unnecessary checks of SM_I(sbi) in
+ update_general_status()
+
+In fill_super() and put_super(), f2fs_destroy_stats() is called
+in prior to f2fs_destroy_segment_manager(), so if current
+sbi can still be visited in global stat list, SM_I(sbi) should be
+released yet.
+For this reason, SM_I(sbi) does not need to be checked in
+update_general_status().
+Thank Chao Yu for advice.
+
+Signed-off-by: Jia-Ju Bai <baijiaju1990@gmail.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/debug.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/debug.c b/fs/f2fs/debug.c
+index 9cadcf9f1ecf..244c5bb23fe2 100644
+--- a/fs/f2fs/debug.c
++++ b/fs/f2fs/debug.c
+@@ -67,7 +67,7 @@ static void update_general_status(struct f2fs_sb_info *sbi)
+ 	si->nr_rd_data = get_pages(sbi, F2FS_RD_DATA);
+ 	si->nr_rd_node = get_pages(sbi, F2FS_RD_NODE);
+ 	si->nr_rd_meta = get_pages(sbi, F2FS_RD_META);
+-	if (SM_I(sbi) && SM_I(sbi)->fcc_info) {
++	if (SM_I(sbi)->fcc_info) {
+ 		si->nr_flushed =
+ 			atomic_read(&SM_I(sbi)->fcc_info->issued_flush);
+ 		si->nr_flushing =
+@@ -75,7 +75,7 @@ static void update_general_status(struct f2fs_sb_info *sbi)
+ 		si->flush_list_empty =
+ 			llist_empty(&SM_I(sbi)->fcc_info->issue_list);
+ 	}
+-	if (SM_I(sbi) && SM_I(sbi)->dcc_info) {
++	if (SM_I(sbi)->dcc_info) {
+ 		si->nr_discarded =
+ 			atomic_read(&SM_I(sbi)->dcc_info->issued_discard);
+ 		si->nr_discarding =
+-- 
+2.15.0
+

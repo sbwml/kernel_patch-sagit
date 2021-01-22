@@ -1,0 +1,38 @@
+From f3bd76a34579f3bfd36f3a0b49194ecadcb819ab Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 20:42:31 -0700
+Subject: [PATCH 029/420] msm: mdss: fix inconsistent mutex_lock
+
+drivers/video/fbdev/msm/mdss_mdp_overlay.c:5280
+__handle_overlay_prepare() warn: inconsistent returns
+'mutex:&mdp5_data->ov_lock'
+
+Change-Id: Iac6acb5fb84331949637258a55733b8be94690eb
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/video/fbdev/msm/mdss_mdp_overlay.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/video/fbdev/msm/mdss_mdp_overlay.c b/drivers/video/fbdev/msm/mdss_mdp_overlay.c
+index daeed5d45072..012870048050 100644
+--- a/drivers/video/fbdev/msm/mdss_mdp_overlay.c
++++ b/drivers/video/fbdev/msm/mdss_mdp_overlay.c
+@@ -5254,6 +5254,7 @@ static int __handle_overlay_prepare(struct msm_fb_data_type *mfd,
+ 		sorted_ovs = kzalloc(num_ovs * sizeof(*ip_ovs), GFP_KERNEL);
+ 		if (!sorted_ovs) {
+ 			pr_err("error allocating ovlist mem\n");
++			mutex_unlock(&mdp5_data->ov_lock);
+ 			return -ENOMEM;
+ 		}
+ 		memcpy(sorted_ovs, ip_ovs, num_ovs * sizeof(*ip_ovs));
+@@ -5261,6 +5262,7 @@ static int __handle_overlay_prepare(struct msm_fb_data_type *mfd,
+ 		if (ret) {
+ 			pr_err("src_split_sort failed. ret=%d\n", ret);
+ 			kfree(sorted_ovs);
++			mutex_unlock(&mdp5_data->ov_lock);
+ 			return ret;
+ 		}
+ 	}
+-- 
+2.15.0
+

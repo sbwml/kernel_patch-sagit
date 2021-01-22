@@ -1,0 +1,46 @@
+From 1c763d7af53d677824b59d185d0a4e8bdde99d07 Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Sun, 30 Apr 2017 16:37:27 -0700
+Subject: [PATCH 024/420] qcom: qmi: release mutex upon
+ qmi_svc_event_notifier_register error
+
+This fixes the following smatch warning:
+
+drivers/soc/qcom/qmi_interface.c:2019 qmi_svc_event_notifier_register()
+warn: inconsistent returns 'mutex:&temp->svc_addr_list_lock'.
+
+Change-Id: I2ada7d79a0ac6b6a14abad0cb463af491dd1c319
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/soc/qcom/qmi_interface.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/soc/qcom/qmi_interface.c b/drivers/soc/qcom/qmi_interface.c
+index 0e7bf13c192b..685a0ec3c379 100644
+--- a/drivers/soc/qcom/qmi_interface.c
++++ b/drivers/soc/qcom/qmi_interface.c
+@@ -1995,8 +1995,10 @@ int qmi_svc_event_notifier_register(uint32_t service_id,
+ 			svc_info_arr = kmalloc_array(num_servers,
+ 						sizeof(*svc_info_arr),
+ 						GFP_KERNEL);
+-			if (!svc_info_arr)
+-				return -ENOMEM;
++			if (!svc_info_arr) {
++				ret = -ENOMEM;
++				goto qmi_svc_event_notifier_register_err;
++			}
+ 			num_servers = msm_ipc_router_lookup_server_name(
+ 								&svc_name,
+ 								svc_info_arr,
+@@ -2014,6 +2016,8 @@ int qmi_svc_event_notifier_register(uint32_t service_id,
+ 			spin_unlock_irqrestore(&temp->nb_lock, flags);
+ 		}
+ 	}
++
++qmi_svc_event_notifier_register_err:
+ 	mutex_unlock(&temp->svc_addr_list_lock);
+ 
+ 	return ret;
+-- 
+2.15.0
+

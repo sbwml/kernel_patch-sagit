@@ -1,0 +1,97 @@
+From 249a54b4909e5297645adbca3b908c8af283ebb9 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Tue, 3 Dec 2019 17:31:00 -0800
+Subject: [PATCH 244/420] f2fs: declare nested quota_sem and remove unnecessary
+ sems
+
+1.
+f2fs_quota_sync
+ -> down_read(&sbi->quota_sem)
+ -> dquot_writeback_dquots
+  -> f2fs_dquot_commit
+   -> down_read(&sbi->quota_sem)
+
+2.
+f2fs_quota_sync
+ -> down_read(&sbi->quota_sem)
+  -> f2fs_write_data_pages
+   -> f2fs_write_single_data_page
+    -> down_write(&F2FS_I(inode)->i_sem)
+
+f2fs_mkdir
+ -> f2fs_do_add_link
+   -> down_write(&F2FS_I(inode)->i_sem)
+   -> f2fs_init_inode_metadata
+    -> f2fs_new_node_page
+     -> dquot_alloc_inode
+      -> f2fs_dquot_mark_dquot_dirty
+       -> down_read(&sbi->quota_sem)
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/super.c | 18 ++++--------------
+ 1 file changed, 4 insertions(+), 14 deletions(-)
+
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index a51dbbbfdee6..1afe2a280680 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2107,7 +2107,7 @@ static int f2fs_dquot_commit(struct dquot *dquot)
+ 	struct f2fs_sb_info *sbi = F2FS_SB(dquot->dq_sb);
+ 	int ret;
+ 
+-	down_read(&sbi->quota_sem);
++	down_read_nested(&sbi->quota_sem, SINGLE_DEPTH_NESTING);
+ 	ret = dquot_commit(dquot);
+ 	if (ret < 0)
+ 		set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
+@@ -2131,13 +2131,10 @@ static int f2fs_dquot_acquire(struct dquot *dquot)
+ static int f2fs_dquot_release(struct dquot *dquot)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_SB(dquot->dq_sb);
+-	int ret;
++	int ret = dquot_release(dquot);
+ 
+-	down_read(&sbi->quota_sem);
+-	ret = dquot_release(dquot);
+ 	if (ret < 0)
+ 		set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
+-	up_read(&sbi->quota_sem);
+ 	return ret;
+ }
+ 
+@@ -2145,29 +2142,22 @@ static int f2fs_dquot_mark_dquot_dirty(struct dquot *dquot)
+ {
+ 	struct super_block *sb = dquot->dq_sb;
+ 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
+-	int ret;
+-
+-	down_read(&sbi->quota_sem);
+-	ret = dquot_mark_dquot_dirty(dquot);
++	int ret = dquot_mark_dquot_dirty(dquot);
+ 
+ 	/* if we are using journalled quota */
+ 	if (is_journalled_quota(sbi))
+ 		set_sbi_flag(sbi, SBI_QUOTA_NEED_FLUSH);
+ 
+-	up_read(&sbi->quota_sem);
+ 	return ret;
+ }
+ 
+ static int f2fs_dquot_commit_info(struct super_block *sb, int type)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
+-	int ret;
++	int ret = dquot_commit_info(sb, type);
+ 
+-	down_read(&sbi->quota_sem);
+-	ret = dquot_commit_info(sb, type);
+ 	if (ret < 0)
+ 		set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
+-	up_read(&sbi->quota_sem);
+ 	return ret;
+ }
+ 
+-- 
+2.15.0
+

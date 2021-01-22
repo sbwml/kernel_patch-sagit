@@ -1,0 +1,52 @@
+From e4fa4dffe462e8fd083d02fc3fb8fd52dd3e1744 Mon Sep 17 00:00:00 2001
+From: Chengguang Xu via Linux-f2fs-devel
+ <linux-f2fs-devel@lists.sourceforge.net>
+Date: Fri, 27 Sep 2019 09:35:48 +0800
+Subject: [PATCH 221/420] f2fs: mark recovery flag correctly in
+ read_raw_super_block()
+
+On the combination of first fail and second success,
+we will miss to mark recovery flag because currently
+we reuse err variable in the loop.
+
+Signed-off-by: Chengguang Xu <cgxu519@zoho.com.cn>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/super.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 058e1b0d41f9..3f20ea9a11d6 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2913,6 +2913,7 @@ static int read_raw_super_block(struct f2fs_sb_info *sbi,
+ 			f2fs_err(sbi, "Unable to read %dth superblock",
+ 				 block + 1);
+ 			err = -EIO;
++			*recovery = 1;
+ 			continue;
+ 		}
+ 
+@@ -2922,6 +2923,7 @@ static int read_raw_super_block(struct f2fs_sb_info *sbi,
+ 			f2fs_err(sbi, "Can't find valid F2FS filesystem in %dth superblock",
+ 				 block + 1);
+ 			brelse(bh);
++			*recovery = 1;
+ 			continue;
+ 		}
+ 
+@@ -2934,10 +2936,6 @@ static int read_raw_super_block(struct f2fs_sb_info *sbi,
+ 		brelse(bh);
+ 	}
+ 
+-	/* Fail to read any one of the superblocks*/
+-	if (err < 0)
+-		*recovery = 1;
+-
+ 	/* No valid superblock */
+ 	if (!*raw_super)
+ 		kvfree(super);
+-- 
+2.15.0
+

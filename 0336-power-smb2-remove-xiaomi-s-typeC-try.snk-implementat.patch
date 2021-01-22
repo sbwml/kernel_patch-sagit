@@ -1,0 +1,53 @@
+From e23297fd2cdd0f83356c2141e497b287e017583f Mon Sep 17 00:00:00 2001
+From: dianlujitao <dianlujitao@lineageos.org>
+Date: Fri, 19 Oct 2018 16:57:41 +0800
+Subject: [PATCH 336/420] power: smb2: remove xiaomi's typeC try.snk
+ implementation
+
+ * Qualcomm introduced a SW implementation of try.SNK and enabled by default.
+
+Change-Id: Ib3faf2f283e90974399b2d26302f5eac3a37509c
+---
+ drivers/power/supply/qcom/qpnp-smb2.c | 19 -------------------
+ 1 file changed, 19 deletions(-)
+
+diff --git a/drivers/power/supply/qcom/qpnp-smb2.c b/drivers/power/supply/qcom/qpnp-smb2.c
+index 564013efdb14..50113a0e8f25 100644
+--- a/drivers/power/supply/qcom/qpnp-smb2.c
++++ b/drivers/power/supply/qcom/qpnp-smb2.c
+@@ -1478,24 +1478,6 @@ static int smb2_configure_typec(struct smb_charger *chg)
+ 		return rc;
+ 	}
+ 
+-#ifdef CONFIG_MACH_XIAOMI_MSM8998
+-	/* enable try.SINK mode */
+-	rc = smblib_masked_write(chg, TYPE_C_CFG_3_REG, EN_TRYSINK_MODE_BIT,
+-				EN_TRYSINK_MODE_BIT);
+-	if (rc < 0) {
+-		dev_err(chg->dev, "Couldn't set Type-C config rc=%d\n", rc);
+-		return rc;
+-	}
+-
+-	/* disable legacy cable IRQs */
+-	rc = smblib_masked_write(chg, TYPE_C_CFG_3_REG,
+-				TYPEC_NONCOMPLIANT_LEGACY_CABLE_INT_EN_BIT |
+-				TYPEC_LEGACY_CABLE_INT_EN_BIT, 0);
+-	if (rc < 0) {
+-		dev_err(chg->dev, "Couldn't set Type-C config rc=%d\n", rc);
+-		return rc;
+-	}
+-#else
+ 	/* disable try.SINK mode and legacy cable IRQs */
+ 	rc = smblib_masked_write(chg, TYPE_C_CFG_3_REG, EN_TRYSINK_MODE_BIT |
+ 				TYPEC_NONCOMPLIANT_LEGACY_CABLE_INT_EN_BIT |
+@@ -1504,7 +1486,6 @@ static int smb2_configure_typec(struct smb_charger *chg)
+ 		dev_err(chg->dev, "Couldn't set Type-C config rc=%d\n", rc);
+ 		return rc;
+ 	}
+-#endif
+ 	return rc;
+ }
+ 
+-- 
+2.15.0
+

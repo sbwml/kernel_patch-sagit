@@ -1,0 +1,25 @@
+From b7fb17446680bebba35bdfde2b7a15b18b1a5f90 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Tue, 27 Oct 2020 22:51:46 +0800
+Subject: [PATCH 003/420] Makefile: remove unsupported cflags
+
+* error: unknown warning option '-Wno-undefined-optimized'; did you mean '-Wno-undefined-inline'? [-Werror,-Wunknown-warning-option]
+---
+ Makefile | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 81171f9cfadd..b63d25b015c0 100644
+--- a/Makefile
++++ b/Makefile
+@@ -737,7 +737,6 @@ KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
+ KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
+ KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
+ KBUILD_CFLAGS += $(call cc-disable-warning, duplicate-decl-specifier)
+-KBUILD_CFLAGS += -Wno-undefined-optimized
+ KBUILD_CFLAGS += -Wno-tautological-constant-out-of-range-compare
+ 
+ # Quiet clang warning: comparison of unsigned expression < 0 is always false
+-- 
+2.15.0
+

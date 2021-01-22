@@ -1,0 +1,32 @@
+From 65efb5738c7b67c320b8f3be4ba2db2a2d0d7ff2 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@google.com>
+Date: Tue, 26 Sep 2017 18:08:13 -0700
+Subject: [PATCH 389/420] scsi: ufs: disable auto hibern8
+
+This patch disables auto_hibern8 to fix slow-down issue.
+
+Bug: 66697973
+Bug: 65535484
+Change-Id: I922cee6132224b687fd53b90f6eb32813900e2dd
+Signed-off-by: Jaegeuk Kim <jaegeuk@google.com>
+---
+ drivers/scsi/ufs/ufshcd.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/scsi/ufs/ufshcd.c b/drivers/scsi/ufs/ufshcd.c
+index d65af117acc9..98509d6619e5 100644
+--- a/drivers/scsi/ufs/ufshcd.c
++++ b/drivers/scsi/ufs/ufshcd.c
+@@ -2419,6 +2419,9 @@ static inline void ufshcd_hba_capabilities(struct ufs_hba *hba)
+ 	hba->nutrs = (hba->capabilities & MASK_TRANSFER_REQUESTS_SLOTS) + 1;
+ 	hba->nutmrs =
+ 	((hba->capabilities & MASK_TASK_MANAGEMENT_REQUEST_SLOTS) >> 16) + 1;
++
++	/* disable auto hibern8 */
++	hba->capabilities &= ~MASK_AUTO_HIBERN8_SUPPORT;
+ }
+ 
+ /**
+-- 
+2.15.0
+

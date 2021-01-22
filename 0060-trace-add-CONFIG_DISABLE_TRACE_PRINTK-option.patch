@@ -1,0 +1,70 @@
+From edde2a101f9eaa83d1453bfd06a1cac4dce9e322 Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Sat, 31 Dec 2016 05:07:17 +0900
+Subject: [PATCH 060/420] trace: add CONFIG_DISABLE_TRACE_PRINTK option
+
+Poorly made kernel trees often use trace_printk() without
+properly guarding them in a #ifdef macro.
+Such usage of trace_printk() causes a warning at
+boot and additional memory allocation.
+
+This option serves to disable those all at once with ease.
+
+Change-Id: I2cb2085f48064bda8c18806597c5aee57237dca6
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: Alex Naidis <alex.naidis@linux.com>
+---
+ include/linux/kernel.h |  4 ++++
+ kernel/trace/Kconfig   | 14 ++++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/include/linux/kernel.h b/include/linux/kernel.h
+index 05b63a1e9f84..3098b65177a3 100644
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -605,6 +605,9 @@ do {									\
+  * let gcc optimize the rest.
+  */
+ 
++#ifdef CONFIG_DISABLE_TRACE_PRINTK
++#define trace_printk pr_debug
++#else
+ #define trace_printk(fmt, ...)				\
+ do {							\
+ 	char _______STR[] = __stringify((__VA_ARGS__));	\
+@@ -627,6 +630,7 @@ do {									\
+ 	else								\
+ 		__trace_printk(_THIS_IP_, fmt, ##args);			\
+ } while (0)
++#endif
+ 
+ extern __printf(2, 3)
+ int __trace_bprintk(unsigned long ip, const char *fmt, ...);
+diff --git a/kernel/trace/Kconfig b/kernel/trace/Kconfig
+index 3c7b7a9bcad1..d8b00f94c63d 100644
+--- a/kernel/trace/Kconfig
++++ b/kernel/trace/Kconfig
+@@ -136,6 +136,20 @@ config GENERIC_TRACER
+ 	bool
+ 	select TRACING
+ 
++if TRACING
++
++config DISABLE_TRACE_PRINTK
++	bool "Force disable trace_printk() usage"
++	default y
++	help
++	  When trace_printk() is used in any of the kernel source, it enables
++	  debugging functions which are not desired for production kernel.
++	  Enabling this option will replace trace_printk() with pr_debug().
++
++	  If in doubt, say Y.
++
++endif
++
+ #
+ # Minimum requirements an architecture has to meet for us to
+ # be able to offer generic tracing facilities:
+-- 
+2.15.0
+

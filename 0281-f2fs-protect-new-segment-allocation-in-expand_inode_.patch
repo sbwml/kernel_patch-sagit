@@ -1,0 +1,42 @@
+From e0be58f917ed3cd1469aa55c1b1039da7c51cf51 Mon Sep 17 00:00:00 2001
+From: Daeho Jeong <daehojeong@google.com>
+Date: Wed, 27 May 2020 13:02:31 +0900
+Subject: [PATCH 281/420] f2fs: protect new segment allocation in
+ expand_inode_data
+
+Found a new segemnt allocation without f2fs_lock_op() in
+expand_inode_data(). So, when we do fallocate() for a pinned file
+and trigger checkpoint very frequently and simultaneously. F2FS gets
+stuck in the below code of do_checkpoint() forever.
+
+  f2fs_sync_meta_pages(sbi, META, LONG_MAX, FS_CP_META_IO);
+  /* Wait for all dirty meta pages to be submitted for IO */
+                                                <= if fallocate() here,
+  f2fs_wait_on_all_pages(sbi, F2FS_DIRTY_META); <= it'll wait forever.
+
+Signed-off-by: Daeho Jeong <daehojeong@google.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 0b2d135766fb..de34f2fe0f51 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1568,7 +1568,11 @@ next_alloc:
+ 
+ 		down_write(&sbi->pin_sem);
+ 		map.m_seg_type = CURSEG_COLD_DATA_PINNED;
++
++		f2fs_lock_op(sbi);
+ 		f2fs_allocate_new_segments(sbi, CURSEG_COLD_DATA);
++		f2fs_unlock_op(sbi);
++
+ 		err = f2fs_map_blocks(inode, &map, 1, F2FS_GET_BLOCK_PRE_DIO);
+ 		up_write(&sbi->pin_sem);
+ 
+-- 
+2.15.0
+

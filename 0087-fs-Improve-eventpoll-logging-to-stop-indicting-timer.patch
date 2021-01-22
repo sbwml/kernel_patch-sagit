@@ -1,0 +1,102 @@
+From cf52520fe8e56820c9afed874eae79e40f208a54 Mon Sep 17 00:00:00 2001
+From: Kelly Rossmoyer <krossmo@google.com>
+Date: Thu, 19 Oct 2017 13:24:10 -0700
+Subject: [PATCH 087/420] fs: Improve eventpoll logging to stop indicting
+ timerfd
+
+timerfd doesn't create any wakelocks; eventpoll can, and is creating the
+wakelocks we see called "[timerfd]".  eventpoll creates two kinds of
+wakelocks: a single top-level lock associated with the eventpoll fd
+itself, and one additional lock for each fd it is polling that needs such
+a lock (e.g. those using EPOLLWAKEUP).  Current code names the per-fd
+locks using the undecorated names of the fds' associated files (hence
+"[timerfd]"), and is naming the top-level lock after the PID of the caller
+and the name of the file behind the first fd for which a per-fd lock is
+created.  To make things clearer, the top-level lock is now named using
+the caller PID and an "epollfd" designation, while the per-fd locks are
+also named with the caller's PID (to associate them with the top-level
+lock) and their respective fds' file names.
+
+Bug: 63622255
+Bug: 38042165
+Test: Ran on device and observed new wakelock naming in bugreport, dumpsys
+batterystats, /d/tracing/trace, and d/wakeup_reasons.
+Change-Id: I32bfe5fe6766bb569329a450cc7163d52d59ed34
+Signed-off-by: Kelly Rossmoyer <krossmo@google.com>
+---
+ fs/eventpoll.c | 14 ++++++++++----
+ fs/timerfd.c   | 12 +++++++++++-
+ 2 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/fs/eventpoll.c b/fs/eventpoll.c
+index df21fc0cda2b..85e0470f531c 100644
+--- a/fs/eventpoll.c
++++ b/fs/eventpoll.c
+@@ -1237,17 +1237,23 @@ static int ep_create_wakeup_source(struct epitem *epi)
+ {
+ 	const char *name;
+ 	struct wakeup_source *ws;
++	char task_comm_buf[TASK_COMM_LEN];
++	char buf[64];
++
++	get_task_comm(task_comm_buf, current);
+ 
+-	name = epi->ffd.file->f_path.dentry->d_name.name;
+ 	if (!epi->ep->ws) {
+-		char buf[64];
+-		snprintf(buf, sizeof(buf), "eventpoll pid:%d file:%s", current->pid, name);
++		snprintf(buf, sizeof(buf), "epoll_%.*s_epollfd",
++			 (int)sizeof(task_comm_buf), task_comm_buf);
+ 		epi->ep->ws = wakeup_source_register(buf);
+ 		if (!epi->ep->ws)
+ 			return -ENOMEM;
+ 	}
+ 
+-	ws = wakeup_source_register(name);
++	name = epi->ffd.file->f_path.dentry->d_name.name;
++	snprintf(buf, sizeof(buf), "epoll_%.*s_file:%s",
++		 (int)sizeof(task_comm_buf), task_comm_buf, name);
++	ws = wakeup_source_register(buf);
+ 
+ 	if (!ws)
+ 		return -ENOMEM;
+diff --git a/fs/timerfd.c b/fs/timerfd.c
+index 1327a02ec778..0274ae2f53e6 100644
+--- a/fs/timerfd.c
++++ b/fs/timerfd.c
+@@ -44,6 +44,8 @@ struct timerfd_ctx {
+ 	bool might_cancel;
+ };
+ 
++static atomic_t instance_count = ATOMIC_INIT(0);
++
+ static LIST_HEAD(cancel_list);
+ static DEFINE_SPINLOCK(cancel_lock);
+ 
+@@ -387,6 +389,9 @@ SYSCALL_DEFINE2(timerfd_create, int, clockid, int, flags)
+ {
+ 	int ufd;
+ 	struct timerfd_ctx *ctx;
++	char task_comm_buf[TASK_COMM_LEN];
++	char file_name_buf[32];
++	int instance;
+ 
+ 	/* Check the TFD_* constants for consistency.  */
+ 	BUILD_BUG_ON(TFD_CLOEXEC != O_CLOEXEC);
+@@ -418,7 +423,12 @@ SYSCALL_DEFINE2(timerfd_create, int, clockid, int, flags)
+ 
+ 	ctx->moffs = ktime_mono_to_real((ktime_t){ .tv64 = 0 });
+ 
+-	ufd = anon_inode_getfd("[timerfd]", &timerfd_fops, ctx,
++	instance = atomic_inc_return(&instance_count);
++	get_task_comm(task_comm_buf, current);
++	snprintf(file_name_buf, sizeof(file_name_buf), "[timerfd%d_%.*s]",
++		 instance, (int)sizeof(task_comm_buf), task_comm_buf);
++
++	ufd = anon_inode_getfd(file_name_buf, &timerfd_fops, ctx,
+ 			       O_RDWR | (flags & TFD_SHARED_FCNTL_FLAGS));
+ 	if (ufd < 0)
+ 		kfree(ctx);
+-- 
+2.15.0
+

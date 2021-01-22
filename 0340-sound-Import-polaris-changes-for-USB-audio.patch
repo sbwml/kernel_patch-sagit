@@ -1,0 +1,216 @@
+From e63fcbb46cf17e994eecef6c8ff3fd281e66456d Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Mon, 18 Jun 2018 21:05:03 +0100
+Subject: [PATCH 340/420] sound: Import polaris changes for USB audio
+
+Change-Id: I4dbf44995e2bc05dd632fc33f543f56415f9b33f
+Signed-off-by: Volodymyr Zhdanov <wight554@gmail.com>
+---
+ drivers/usb/core/hub.c         | 16 ++++++++++++++++
+ drivers/usb/host/xhci-ring.c   | 22 ++++++++++++++++++++++
+ drivers/usb/pd/policy_engine.c | 33 +++++++++++++++++++++++++++++++++
+ sound/usb/pcm.c                | 11 +++++++++++
+ 4 files changed, 82 insertions(+)
+
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index e6264c76c536..6f68e45c2b34 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -112,6 +112,11 @@ static int hub_port_disable(struct usb_hub *hub, int port1, int set_state);
+ static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
+ 		u16 portstatus);
+ 
++#define USB_VENDOR_XIAOMI		0x2717
++#define USB_PRODUCT_XIAOMI_HEADSET	0x3801
++
++bool is_xiaomi_headset = false;
++
+ static inline char *portspeed(struct usb_hub *hub, int portstatus)
+ {
+ 	if (hub_is_superspeed(hub->hdev))
+@@ -2119,6 +2124,11 @@ void usb_disconnect(struct usb_device **pdev)
+ 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
+ 			udev->devnum);
+ 
++	if (is_xiaomi_headset) {
++		dev_info(&udev->dev, "xiaomi headset removed, devnum %d\n", udev->devnum);
++		is_xiaomi_headset = false;
++	}
++
+ 	/*
+ 	 * Ensure that the pm runtime code knows that the USB device
+ 	 * is in the process of being disconnected.
+@@ -2446,6 +2456,12 @@ int usb_new_device(struct usb_device *udev)
+ 	udev->dev.devt = MKDEV(USB_DEVICE_MAJOR,
+ 			(((udev->bus->busnum-1) * 128) + (udev->devnum-1)));
+ 
++	if (USB_VENDOR_XIAOMI == le16_to_cpu(udev->descriptor.idVendor)
++			 && USB_PRODUCT_XIAOMI_HEADSET == le16_to_cpu(udev->descriptor.idProduct)) {
++		dev_info(&udev->dev, "xiaomi headset identified, devnum %d\n", udev->devnum);
++		is_xiaomi_headset = true;
++	}
++
+ 	/* Tell the world! */
+ 	announce_device(udev);
+ 
+diff --git a/drivers/usb/host/xhci-ring.c b/drivers/usb/host/xhci-ring.c
+index 5fff55592b10..c8184b733d33 100644
+--- a/drivers/usb/host/xhci-ring.c
++++ b/drivers/usb/host/xhci-ring.c
+@@ -68,6 +68,8 @@
+ #include <linux/slab.h>
+ #include "xhci.h"
+ #include "xhci-trace.h"
++extern void kick_usbpd_vbus_sm(void);
++extern bool is_xiaomi_headset;
+ 
+ /*
+  * Returns zero if the TRB isn't in this segment, otherwise it returns the DMA
+@@ -282,6 +284,9 @@ void xhci_ring_cmd_db(struct xhci_hcd *xhci)
+ 
+ static bool xhci_mod_cmd_timer(struct xhci_hcd *xhci, unsigned long delay)
+ {
++	if (is_xiaomi_headset)
++		delay = msecs_to_jiffies(1000);
++
+ 	return mod_delayed_work(system_wq, &xhci->cmd_timer, delay);
+ }
+ 
+@@ -344,6 +349,7 @@ static int xhci_abort_cmd_ring(struct xhci_hcd *xhci, unsigned long flags)
+ {
+ 	u64 temp_64;
+ 	int ret;
++	int delay;
+ 
+ 	xhci_dbg(xhci, "Abort command ring\n");
+ 
+@@ -359,9 +365,17 @@ static int xhci_abort_cmd_ring(struct xhci_hcd *xhci, unsigned long flags)
+ 	 * CRR negated in a timely manner, then it should assume
+ 	 * that the there are larger problems with the xHC and assert HCRST.
+ 	 */
++	if (is_xiaomi_headset) {
++		delay = 500 * 1000;
++	} else {
++		delay = 5000 * 1000;
++	}
++
+ 	ret = xhci_handshake_check_state(xhci, &xhci->op_regs->cmd_ring,
+ 			CMD_RING_RUNNING, 0, 1000 * 1000);
+ 	if (ret < 0) {
++		if (is_xiaomi_headset)
++			return -EPERM;
+ 		xhci_err(xhci,
+ 			 "Stop command ring failed, maybe the host is dead\n");
+ 		xhci->xhc_state |= XHCI_STATE_DYING;
+@@ -1288,6 +1302,14 @@ void xhci_handle_command_timeout(struct work_struct *work)
+ 		xhci->cmd_ring_state = CMD_RING_STATE_ABORTED;
+ 		xhci_dbg(xhci, "Command timeout\n");
+ 		ret = xhci_abort_cmd_ring(xhci, flags);
++		if (ret == -EPERM) {
++			xhci_err(xhci, "Abort command ring failed reset usb device\n");
++			xhci_cleanup_command_queue(xhci);
++			spin_unlock_irqrestore(&xhci->lock, flags);
++			kick_usbpd_vbus_sm();
++			return;
++		}
++
+ 		if (unlikely(ret == -ESHUTDOWN)) {
+ 			xhci_err(xhci, "Abort command ring failed\n");
+ 			xhci_cleanup_command_queue(xhci);
+diff --git a/drivers/usb/pd/policy_engine.c b/drivers/usb/pd/policy_engine.c
+index 540498548978..adffd992814b 100644
+--- a/drivers/usb/pd/policy_engine.c
++++ b/drivers/usb/pd/policy_engine.c
+@@ -361,6 +361,7 @@ struct usbpd {
+ 	struct device		dev;
+ 	struct workqueue_struct	*wq;
+ 	struct work_struct	sm_work;
++	struct delayed_work	vbus_work;
+ 	struct hrtimer		timer;
+ 	bool			sm_queued;
+ 
+@@ -3724,6 +3725,35 @@ static ssize_t get_battery_status_show(struct device *dev,
+ }
+ static DEVICE_ATTR_RW(get_battery_status);
+ 
++struct usbpd *pd_lobal;
++void pd_vbus_reset(struct usbpd *pd)
++{
++	if (!pd) {
++		return;
++	}
++
++	if (pd->vbus_enabled) {
++		regulator_disable(pd->vbus);
++		pd->vbus_enabled = false;
++		stop_usb_host(pd);
++		msleep(500);
++		start_usb_host(pd, true);
++		enable_vbus(pd);
++	}
++}
++
++/* Handles VBUS off on */
++void usbpd_vbus_sm(struct work_struct *w)
++{
++	struct usbpd *pd = pd_lobal;
++	pd_vbus_reset(pd);
++}
++ void kick_usbpd_vbus_sm(void)
++{
++	pm_stay_awake(&pd_lobal->dev);
++	queue_delayed_work(pd_lobal->wq, &(pd_lobal->vbus_work), msecs_to_jiffies(200));
++}
++
+ static struct attribute *usbpd_attrs[] = {
+ 	&dev_attr_contract.attr,
+ 	&dev_attr_initial_pr.attr,
+@@ -3862,6 +3892,7 @@ struct usbpd *usbpd_create(struct device *parent)
+ 		goto del_pd;
+ 	}
+ 	INIT_WORK(&pd->sm_work, usbpd_sm);
++	INIT_DELAYED_WORK(&pd->vbus_work, usbpd_vbus_sm);
+ 	hrtimer_init(&pd->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+ 	pd->timer.function = pd_timeout;
+ 	mutex_init(&pd->swap_lock);
+@@ -3986,6 +4017,8 @@ struct usbpd *usbpd_create(struct device *parent)
+ 	/* force read initial power_supply values */
+ 	psy_changed(&pd->psy_nb, PSY_EVENT_PROP_CHANGED, pd->usb_psy);
+ 
++	pd_lobal = pd;
++
+ 	return pd;
+ 
+ del_inst:
+diff --git a/sound/usb/pcm.c b/sound/usb/pcm.c
+index 8eaadc0a4cb2..21259234d668 100644
+--- a/sound/usb/pcm.c
++++ b/sound/usb/pcm.c
+@@ -491,6 +491,11 @@ static int set_sync_endpoint(struct snd_usb_substream *subs,
+ 	return 0;
+ }
+ 
++#define USB_VENDOR_XIAOMI		0x2717
++#define USB_PRODUCT_XIAOMI_HEADSET	0x3801
++
++extern void kick_usbpd_vbus_sm(void);
++
+ /*
+  * find a matching format and set up the interface
+  */
+@@ -539,6 +544,12 @@ static int set_format(struct snd_usb_substream *subs, struct audioformat *fmt)
+ 			dev_err(&dev->dev,
+ 				"%d:%d: usb_set_interface failed (%d)\n",
+ 				fmt->iface, fmt->altsetting, err);
++
++			if (USB_VENDOR_XIAOMI == USB_ID_VENDOR(subs->stream->chip->usb_id) &&
++					USB_PRODUCT_XIAOMI_HEADSET == USB_ID_PRODUCT(subs->stream->chip->usb_id)) {
++				kick_usbpd_vbus_sm();
++			}
++
+ 			return -EIO;
+ 		}
+ 		dev_dbg(&dev->dev, "setting usb interface %d:%d\n",
+-- 
+2.15.0
+

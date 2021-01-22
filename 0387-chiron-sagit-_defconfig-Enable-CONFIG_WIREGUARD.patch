@@ -1,0 +1,39 @@
+From 834d8de3add03bdd24ae166583e619296b28ed52 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Thu, 21 Jan 2021 18:47:17 +0800
+Subject: [PATCH 387/420] {chiron,sagit}_defconfig: Enable CONFIG_WIREGUARD
+
+---
+ arch/arm64/configs/chiron_defconfig | 2 ++
+ arch/arm64/configs/sagit_defconfig  | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index b136ce486255..ecfd0fd1ab94 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -95,6 +95,8 @@ CONFIG_XFRM_USER=y
+ CONFIG_XFRM_STATISTICS=y
+ CONFIG_NET_KEY=y
+ CONFIG_INET=y
++CONFIG_WIREGUARD=y
++# CONFIG_WIREGUARD_DEBUG is not set
+ CONFIG_IP_MULTICAST=y
+ CONFIG_IP_ADVANCED_ROUTER=y
+ CONFIG_IP_MULTIPLE_TABLES=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 031249248452..6eb2d82e69fe 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -95,6 +95,8 @@ CONFIG_XFRM_USER=y
+ CONFIG_XFRM_STATISTICS=y
+ CONFIG_NET_KEY=y
+ CONFIG_INET=y
++CONFIG_WIREGUARD=y
++# CONFIG_WIREGUARD_DEBUG is not set
+ CONFIG_IP_MULTICAST=y
+ CONFIG_IP_ADVANCED_ROUTER=y
+ CONFIG_IP_MULTIPLE_TABLES=y
+-- 
+2.15.0
+

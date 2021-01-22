@@ -1,0 +1,42 @@
+From a0aeee6073345967451c959516b36cb4b22798ea Mon Sep 17 00:00:00 2001
+From: Stephen Boyd <sboyd@codeaurora.org>
+Date: Thu, 7 Sep 2017 11:42:30 -0700
+Subject: [PATCH 066/420] smp: Wake up all idle CPUs when suspending to idle
+
+Regardless of CPU isolation or not, we need to wake up all the
+CPUs during suspend to idle so that each CPU can disable their
+local tick device, etc. If we don't wake every CPU up, then we
+don't fully suspend the system and things like sched_clock and
+timekeeping are never stopped properly.
+
+Change-Id: Ic9141602acc5e6cddefca0727f9be075dad3e498
+Signed-off-by: Stephen Boyd <sboyd@codeaurora.org>
+---
+ kernel/smp.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/smp.c b/kernel/smp.c
+index b2ec21c5c9d6..3f300d3fd1f6 100644
+--- a/kernel/smp.c
++++ b/kernel/smp.c
+@@ -14,6 +14,7 @@
+ #include <linux/smp.h>
+ #include <linux/cpu.h>
+ #include <linux/sched.h>
++#include <linux/suspend.h>
+ 
+ #include "smpboot.h"
+ 
+@@ -766,7 +767,8 @@ void wake_up_all_idle_cpus(void)
+ 	for_each_online_cpu(cpu) {
+ 		if (cpu == smp_processor_id())
+ 			continue;
+-		if (!cpu_isolated(cpu))
++		if (suspend_freeze_state == FREEZE_STATE_ENTER ||
++		    !cpu_isolated(cpu))
+ 			wake_up_if_idle(cpu);
+ 	}
+ 	preempt_enable();
+-- 
+2.15.0
+

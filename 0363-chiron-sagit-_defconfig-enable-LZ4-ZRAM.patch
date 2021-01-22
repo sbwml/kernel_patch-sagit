@@ -1,0 +1,41 @@
+From a9ba1303d17d12eea18c78b6789b8ece6308d92f Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Fri, 2 Feb 2018 13:22:46 -0800
+Subject: [PATCH 363/420] {chiron,sagit}_defconfig: enable LZ4 ZRAM
+
+Bug: 69685432
+Test: Build
+Change-Id: I894bd86c76e7c5668e1535dfc7bf3a20fa233488
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index e6babba9e8d9..32d2f20f962c 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -694,6 +694,7 @@ CONFIG_CRYPTO_GCM=y
+ CONFIG_CRYPTO_XCBC=y
+ CONFIG_CRYPTO_MD4=y
+ CONFIG_CRYPTO_TWOFISH=y
++CONFIG_CRYPTO_LZ4=y
+ CONFIG_CRYPTO_ANSI_CPRNG=y
+ CONFIG_CRYPTO_DEV_QCRYPTO=y
+ CONFIG_CRYPTO_DEV_QCOM_MSM_QCE=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 2edc8ba221d9..95989cd3e7a3 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -694,6 +694,7 @@ CONFIG_CRYPTO_GCM=y
+ CONFIG_CRYPTO_XCBC=y
+ CONFIG_CRYPTO_MD4=y
+ CONFIG_CRYPTO_TWOFISH=y
++CONFIG_CRYPTO_LZ4=y
+ CONFIG_CRYPTO_ANSI_CPRNG=y
+ CONFIG_CRYPTO_DEV_QCRYPTO=y
+ CONFIG_CRYPTO_DEV_QCOM_MSM_QCE=y
+-- 
+2.15.0
+

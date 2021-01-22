@@ -1,0 +1,106 @@
+From 96d937b95ee3c40d94d3ce70eefb780295f50d7c Mon Sep 17 00:00:00 2001
+From: Siqi Lin <siqilin@google.com>
+Date: Tue, 3 Oct 2017 16:08:09 -0700
+Subject: [PATCH 075/420] ANDROID: pstore: Use vmalloc for large allocations
+ due to ramoops size
+
+Android uses a 1 MiB console ramoops region, which requires kmalloc
+to be changed to vmalloc in the following places:
+
+1. pstore_mkfile(), allocation of inode->i_private
+2. ramoops_pstore_read(), allocation of buf
+
+Bug: 67383905
+Change-Id: Ie4f355a5991b7cb6ad356ded7bd9d41630602bf5
+Signed-off-by: Siqi Lin <siqilin@google.com>
+---
+ fs/pstore/inode.c    | 7 ++++---
+ fs/pstore/platform.c | 5 +++--
+ fs/pstore/ram.c      | 2 +-
+ 3 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/fs/pstore/inode.c b/fs/pstore/inode.c
+index ac6c78fe19cf..30212a6f278d 100644
+--- a/fs/pstore/inode.c
++++ b/fs/pstore/inode.c
+@@ -37,6 +37,7 @@
+ #include <linux/spinlock.h>
+ #include <linux/uaccess.h>
+ #include <linux/syslog.h>
++#include <linux/vmalloc.h>
+ 
+ #include "internal.h"
+ 
+@@ -216,7 +217,7 @@ static void pstore_evict_inode(struct inode *inode)
+ 		spin_lock_irqsave(&allpstore_lock, flags);
+ 		list_del(&p->list);
+ 		spin_unlock_irqrestore(&allpstore_lock, flags);
+-		kfree(p);
++		vfree(p);
+ 	}
+ }
+ 
+@@ -328,7 +329,7 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
+ 		goto fail;
+ 	inode->i_mode = S_IFREG | 0444;
+ 	inode->i_fop = &pstore_file_operations;
+-	private = kmalloc(sizeof *private + size, GFP_KERNEL);
++	private = vmalloc(sizeof *private + size);
+ 	if (!private)
+ 		goto fail_alloc;
+ 	private->type = type;
+@@ -402,7 +403,7 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
+ 
+ fail_lockedalloc:
+ 	mutex_unlock(&d_inode(root)->i_mutex);
+-	kfree(private);
++	vfree(private);
+ fail_alloc:
+ 	iput(inode);
+ 
+diff --git a/fs/pstore/platform.c b/fs/pstore/platform.c
+index 6fbfa8189451..21bf055bdebf 100644
+--- a/fs/pstore/platform.c
++++ b/fs/pstore/platform.c
+@@ -36,6 +36,7 @@
+ #include <linux/hardirq.h>
+ #include <linux/jiffies.h>
+ #include <linux/workqueue.h>
++#include <linux/vmalloc.h>
+ 
+ #include "internal.h"
+ 
+@@ -580,7 +581,7 @@ void pstore_get_records(int quiet)
+ 							big_oops_buf_sz);
+ 
+ 			if (unzipped_len > 0) {
+-				kfree(buf);
++				vfree(buf);
+ 				buf = big_oops_buf;
+ 				size = unzipped_len;
+ 				compressed = false;
+@@ -594,7 +595,7 @@ void pstore_get_records(int quiet)
+ 				  compressed, (size_t)size, time, psi);
+ 		if (unzipped_len < 0) {
+ 			/* Free buffer other than big oops */
+-			kfree(buf);
++			vfree(buf);
+ 			buf = NULL;
+ 		} else
+ 			unzipped_len = -1;
+diff --git a/fs/pstore/ram.c b/fs/pstore/ram.c
+index c9e4bc47c79d..1e6a9597aff3 100644
+--- a/fs/pstore/ram.c
++++ b/fs/pstore/ram.c
+@@ -233,7 +233,7 @@ static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
+ 	/* ECC correction notice */
+ 	ecc_notice_size = persistent_ram_ecc_string(prz, NULL, 0);
+ 
+-	*buf = kmalloc(size + ecc_notice_size + 1, GFP_KERNEL);
++	*buf = vmalloc(size + ecc_notice_size + 1);
+ 	if (*buf == NULL)
+ 		return -ENOMEM;
+ 
+-- 
+2.15.0
+

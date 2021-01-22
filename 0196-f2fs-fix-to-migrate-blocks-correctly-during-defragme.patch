@@ -1,0 +1,61 @@
+From 012ba06c943ea3855e85c7fb6be7bdd393eeae38 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Mon, 29 Jul 2019 23:02:29 +0800
+Subject: [PATCH 196/420] f2fs: fix to migrate blocks correctly during
+ defragment
+
+During defragment, we missed to trigger fragmented blocks migration
+for below condition:
+
+In defragment region:
+- total number of valid blocks is smaller than 512;
+- the tail part of the region are all holes;
+
+In addtion, return zero to user via range->len if there is no
+fragmented blocks.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index f6838cf403a9..a8ec3ae72236 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -2387,8 +2387,10 @@ static int f2fs_defragment_range(struct f2fs_sb_info *sbi,
+ 		map.m_lblk += map.m_len;
+ 	}
+ 
+-	if (!fragmented)
++	if (!fragmented) {
++		total = 0;
+ 		goto out;
++	}
+ 
+ 	sec_num = DIV_ROUND_UP(total, BLKS_PER_SEC(sbi));
+ 
+@@ -2418,7 +2420,7 @@ do_map:
+ 
+ 		if (!(map.m_flags & F2FS_MAP_FLAGS)) {
+ 			map.m_lblk = next_pgofs;
+-			continue;
++			goto check;
+ 		}
+ 
+ 		set_inode_flag(inode, FI_DO_DEFRAG);
+@@ -2442,8 +2444,8 @@ do_map:
+ 		}
+ 
+ 		map.m_lblk = idx;
+-
+-		if (idx < pg_end && cnt < blk_per_seg)
++check:
++		if (map.m_lblk < pg_end && cnt < blk_per_seg)
+ 			goto do_map;
+ 
+ 		clear_inode_flag(inode, FI_DO_DEFRAG);
+-- 
+2.15.0
+

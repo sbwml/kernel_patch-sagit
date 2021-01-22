@@ -1,0 +1,31 @@
+From f8f0f6a145d7be5cb4f03d194daab5384dd041cb Mon Sep 17 00:00:00 2001
+From: wloot <wlootlxt123@gmail.com>
+Date: Fri, 12 Jul 2019 02:24:54 +0800
+Subject: [PATCH 394/420] ASoC: wcd-spi: clear bit whether spi clk is disabled
+
+Change-Id: I2648736a26a3743a4faa98f03f182c0c3420c91a
+---
+ sound/soc/codecs/wcd-spi.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/codecs/wcd-spi.c b/sound/soc/codecs/wcd-spi.c
+index fde1d3e815d3..9a84738a2280 100644
+--- a/sound/soc/codecs/wcd-spi.c
++++ b/sound/soc/codecs/wcd-spi.c
+@@ -602,8 +602,11 @@ static int wcd_spi_clk_disable(struct spi_device *spi)
+ 	if (IS_ERR_VALUE(ret))
+ 		dev_err(&spi->dev, "%s: Failed, err = %d\n",
+ 			__func__, ret);
+-	else
+-		clear_bit(WCD_SPI_CLK_STATE_ENABLED, &wcd_spi->status_mask);
++	/*
++	 * clear this bit even if clock disable failed
++	 * as the source clocks might get turned off.
++	 */
++	clear_bit(WCD_SPI_CLK_STATE_ENABLED, &wcd_spi->status_mask);
+ 
+ 	return ret;
+ }
+-- 
+2.15.0
+

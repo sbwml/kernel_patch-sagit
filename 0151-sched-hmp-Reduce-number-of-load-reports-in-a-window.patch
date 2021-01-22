@@ -1,0 +1,37 @@
+From 73ec1ae6dab51b55fdc9663de260b1b32f9a8be2 Mon Sep 17 00:00:00 2001
+From: Vikram Mulukutla <markivx@codeaurora.org>
+Date: Fri, 31 Mar 2017 16:29:59 -0700
+Subject: [PATCH 151/420] sched: hmp: Reduce number of load reports in a window
+
+There's no use reporting load more than once in a window
+via the cpufreq_update_util path (unless there's a migration).
+Set the load_reported_window flag in sched_get_cpus_busy
+to remove these redundant updates.
+
+Change-Id: If43dd5abc7e0e52a8e0f0df3a20ca99ed92f5361
+Signed-off-by: Vikram Mulukutla <markivx@codeaurora.org>
+---
+ kernel/sched/hmp.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/kernel/sched/hmp.c b/kernel/sched/hmp.c
+index ac9c93bc45fc..598656b42203 100644
+--- a/kernel/sched/hmp.c
++++ b/kernel/sched/hmp.c
+@@ -3217,6 +3217,13 @@ void sched_get_cpus_busy(struct sched_load *busy,
+ 		update_task_ravg(rq->curr, rq, TASK_UPDATE, sched_ktime_clock(),
+ 				 0);
+ 
++		/*
++		 * Ensure that we don't report load for 'cpu' again via the
++		 * cpufreq_update_util path in the window that started at
++		 * rq->window_start
++		 */
++		rq->load_reported_window = rq->window_start;
++
+ 		account_load_subtractions(rq);
+ 		load[i] = rq->prev_runnable_sum;
+ 		nload[i] = rq->nt_prev_runnable_sum;
+-- 
+2.15.0
+

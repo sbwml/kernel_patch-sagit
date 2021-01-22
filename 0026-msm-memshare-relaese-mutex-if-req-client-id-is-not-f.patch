@@ -1,0 +1,33 @@
+From 09e8fbc4c82bc541cdd807e4c3cb1159df60b2f9 Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Sun, 30 Apr 2017 16:50:31 -0700
+Subject: [PATCH 026/420] msm: memshare: relaese mutex if req client id is not
+ found
+
+This fixes the smatch warning below:
+
+drivers/soc/qcom/memshare/msm_memshare.c:570 handle_alloc_generic_req()
+warn: inconsistent returns 'mutex:&memsh_drv->mem_share'.
+
+Bug: 35898203
+Change-Id: I86f3d77c9bb471b1bc26360e11e378fa3d1a3f66
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/soc/qcom/memshare/msm_memshare.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/soc/qcom/memshare/msm_memshare.c b/drivers/soc/qcom/memshare/msm_memshare.c
+index 94b535111f24..cc566d6480f6 100644
+--- a/drivers/soc/qcom/memshare/msm_memshare.c
++++ b/drivers/soc/qcom/memshare/msm_memshare.c
+@@ -522,6 +522,7 @@ static int handle_alloc_generic_req(void *req_h, void *req, void *conn_h)
+ 				alloc_req->proc_id);
+ 		kfree(alloc_resp);
+ 		alloc_resp = NULL;
++		mutex_unlock(&memsh_drv->mem_share);
+ 		return -EINVAL;
+ 	}
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,44 @@
+From 3ab5708d070128c5b18cfed70fd2c3471c3dc6ae Mon Sep 17 00:00:00 2001
+From: Qiuyang Sun <sunqiuyang@huawei.com>
+Date: Mon, 23 Sep 2019 12:22:35 +0800
+Subject: [PATCH 223/420] f2fs: check total_segments from devices in raw_super
+
+For multi-device F2FS, we should check if the sum of total_segments from
+all devices matches segment_count.
+
+Signed-off-by: Qiuyang Sun <sunqiuyang@huawei.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/super.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 3f20ea9a11d6..2878abc528c0 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2556,6 +2556,21 @@ static int sanity_check_raw_super(struct f2fs_sb_info *sbi,
+ 		return -EFSCORRUPTED;
+ 	}
+ 
++	if (RDEV(0).path[0]) {
++		block_t dev_seg_count = le32_to_cpu(RDEV(0).total_segments);
++		int i = 1;
++
++		while (i < MAX_DEVICES && RDEV(i).path[0]) {
++			dev_seg_count += le32_to_cpu(RDEV(i).total_segments);
++			i++;
++		}
++		if (segment_count != dev_seg_count) {
++			f2fs_info(sbi, "Segment count (%u) mismatch with total segments from devices (%u)",
++					segment_count, dev_seg_count);
++			return -EFSCORRUPTED;
++		}
++	}
++
+ 	if (secs_per_zone > total_sections || !secs_per_zone) {
+ 		f2fs_info(sbi, "Wrong secs_per_zone / total_sections (%u, %u)",
+ 			  secs_per_zone, total_sections);
+-- 
+2.15.0
+

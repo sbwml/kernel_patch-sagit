@@ -1,0 +1,30 @@
+From 3ffaf3b85e0102dac5a2f9767557ef8c529fe01a Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Mon, 22 Jul 2019 17:57:06 +0800
+Subject: [PATCH 188/420] f2fs: fix to detect cp error in f2fs_setxattr()
+
+It needs to return -EIO if filesystem has been shutdown, fix the
+miss case in f2fs_setxattr().
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/xattr.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/f2fs/xattr.c b/fs/f2fs/xattr.c
+index 744514285fbf..c0fc00d9750b 100644
+--- a/fs/f2fs/xattr.c
++++ b/fs/f2fs/xattr.c
+@@ -769,6 +769,8 @@ int f2fs_setxattr(struct inode *inode, int index, const char *name,
+ 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+ 	int err;
+ 
++	if (unlikely(f2fs_cp_error(sbi)))
++		return -EIO;
+ 	err = f2fs_is_checkpoint_ready(sbi);
+ 	if (err)
+ 		return err;
+-- 
+2.15.0
+

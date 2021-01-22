@@ -1,0 +1,33 @@
+From b67b2bac6daef574cf125cd3d0675303321d15f6 Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Tue, 14 May 2019 15:36:22 +0900
+Subject: [PATCH 295/420] f2fs: don't wait with each discards under gc_urgent
+
+f2fs already addresses gc_urgent under discard, but still uses the
+default wait_ms.
+
+To gain as many free segments as fast as possible,
+use 1 for wait_ms under gc_urgent for discards.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/f2fs/segment.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index d9b6f22dc448..b7010e5c9a53 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -1790,7 +1790,8 @@ static int issue_discard_thread(void *data)
+ 		wait_event_interruptible_timeout(*q,
+ 				kthread_should_stop() || freezing(current) ||
+ 				dcc->discard_wake,
+-				msecs_to_jiffies(wait_ms));
++				msecs_to_jiffies((sbi->gc_mode == GC_URGENT) ?
++						 1 : wait_ms));
+ 
+ 		if (dcc->discard_wake)
+ 			dcc->discard_wake = 0;
+-- 
+2.15.0
+

@@ -1,0 +1,55 @@
+From c8bdbc5052ffb4b679832840e9c1ec2969830818 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 16 Aug 2019 11:03:34 +0800
+Subject: [PATCH 200/420] f2fs: fix to avoid data corruption by forbidding SSR
+ overwrite
+
+There is one case can cause data corruption.
+
+- write 4k to fileA
+- fsync fileA, 4k data is writebacked to lbaA
+- write 4k to fileA
+- kworker flushs 4k to lbaB; dnode contain lbaB didn't be persisted yet
+- write 4k to fileB
+- kworker flush 4k to lbaA due to SSR
+- SPOR -> dnode with lbaA will be recovered, however lbaA contains fileB's
+data
+
+One solution is tracking all fsynced file's block history, and disallow
+SSR overwrite on newly invalidated block on that file.
+
+However, during recovery, no matter the dnode is flushed or fsynced, all
+previous dnodes until last fsynced one in node chain can be recovered,
+that means we need to record all block change in flushed dnode, which
+will cause heavy cost, so let's just use simple fix by forbidding SSR
+overwrite directly.
+
+Fixes: 5b6c6be2d878 ("f2fs: use SSR for warm node as well")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/segment.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index a0aba99dc986..2b5512ade94a 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -2226,9 +2226,11 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
+ 		if (!f2fs_test_and_set_bit(offset, se->discard_map))
+ 			sbi->discard_blks--;
+ 
+-		/* don't overwrite by SSR to keep node chain */
+-		if (IS_NODESEG(se->type) &&
+-				!is_sbi_flag_set(sbi, SBI_CP_DISABLED)) {
++		/*
++		 * SSR should never reuse block which is checkpointed
++		 * or newly invalidated.
++		 */
++		if (!is_sbi_flag_set(sbi, SBI_CP_DISABLED)) {
+ 			if (!f2fs_test_and_set_bit(offset, se->ckpt_valid_map))
+ 				se->ckpt_valid_blocks++;
+ 		}
+-- 
+2.15.0
+

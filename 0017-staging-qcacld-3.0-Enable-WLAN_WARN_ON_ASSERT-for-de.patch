@@ -1,0 +1,37 @@
+From bd511d18ff1b3411774a0bb152fe3e2da3378f1e Mon Sep 17 00:00:00 2001
+From: Dustin Brown <dustinb@codeaurora.org>
+Date: Thu, 22 Mar 2018 13:00:44 -0700
+Subject: [PATCH 017/420] staging: qcacld-3.0: Enable WLAN_WARN_ON_ASSERT for
+ debug builds
+
+QDF_ASSERT is being featurized in
+I39e3ab6499210569b6ce09d77ee72f0081741989. Enable the QDF_ASSERT feature
+in debug builds by default.
+
+Change-Id: I96484e6dbebcecf17ae7877dc30906ed8fa90bd7
+CRs-Fixed: 2211987
+---
+ drivers/staging/qcacld-3.0/Kbuild | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/staging/qcacld-3.0/Kbuild b/drivers/staging/qcacld-3.0/Kbuild
+index 6216c14a2a25..fa15d74a013c 100644
+--- a/drivers/staging/qcacld-3.0/Kbuild
++++ b/drivers/staging/qcacld-3.0/Kbuild
+@@ -313,10 +313,13 @@ BUILD_DIAG_VERSION := 1
+ #Do we panic on bug?  default is to warn
+ ifeq ($(CONFIG_SLUB_DEBUG), y)
+ 	PANIC_ON_BUG := 1
++	WLAN_WARN_ON_ASSERT := 1
+ else ifeq ($(CONFIG_PERF_DEBUG), y)
+ 	PANIC_ON_BUG := 1
++	WLAN_WARN_ON_ASSERT := 1
+ else
+ 	PANIC_ON_BUG := 0
++	WLAN_WARN_ON_ASSERT := 0
+ endif
+ 
+ #Enable OL debug and wmi unified functions
+-- 
+2.15.0
+

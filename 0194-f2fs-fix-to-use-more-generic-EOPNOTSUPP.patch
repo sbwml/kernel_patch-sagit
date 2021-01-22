@@ -1,0 +1,32 @@
+From a35eb638d61fa6d89f0e0c5db712d878e89fc52b Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Thu, 15 Aug 2019 19:45:36 +0800
+Subject: [PATCH 194/420] f2fs: fix to use more generic EOPNOTSUPP
+
+EOPNOTSUPP is widely used as error number indicating operation is
+not supported in syscall, and ENOTSUPP was defined and only used
+for NFSv3 protocol, so use EOPNOTSUPP instead.
+
+Fixes: 0a2aa8fbb969 ("f2fs: refactor __exchange_data_block for speed up")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 161112b56a0d..f6838cf403a9 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1042,7 +1042,7 @@ next_dnode:
+ 
+ 			if (test_opt(sbi, LFS)) {
+ 				f2fs_put_dnode(&dn);
+-				return -ENOTSUPP;
++				return -EOPNOTSUPP;
+ 			}
+ 
+ 			/* do not invalidate this block address */
+-- 
+2.15.0
+

@@ -1,0 +1,62 @@
+From c0eec7fee7b562ebddf2897581754dbca3a737f2 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Mon, 22 Jul 2019 18:03:50 +0800
+Subject: [PATCH 186/420] f2fs: support fiemap() for directory inode
+
+Adjust f2fs_fiemap() to support fiemap() on directory inode.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c   | 2 +-
+ fs/f2fs/inline.c | 8 +++++++-
+ fs/f2fs/namei.c  | 1 +
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index a7891b2d0416..4b3d1a729053 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -1573,7 +1573,7 @@ int f2fs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		goto out;
+ 	}
+ 
+-	if (f2fs_has_inline_data(inode)) {
++	if (f2fs_has_inline_data(inode) || f2fs_has_inline_dentry(inode)) {
+ 		ret = f2fs_inline_data_fiemap(inode, fieinfo, start, len);
+ 		if (ret != -EAGAIN)
+ 			goto out;
+diff --git a/fs/f2fs/inline.c b/fs/f2fs/inline.c
+index aef822b1fa9d..a0b953ae7f7a 100644
+--- a/fs/f2fs/inline.c
++++ b/fs/f2fs/inline.c
+@@ -722,7 +722,13 @@ int f2fs_inline_data_fiemap(struct inode *inode,
+ 	if (IS_ERR(ipage))
+ 		return PTR_ERR(ipage);
+ 
+-	if (!f2fs_has_inline_data(inode)) {
++	if ((S_ISREG(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
++				!f2fs_has_inline_data(inode)) {
++		err = -EAGAIN;
++		goto out;
++	}
++
++	if (S_ISDIR(inode->i_mode) && !f2fs_has_inline_dentry(inode)) {
+ 		err = -EAGAIN;
+ 		goto out;
+ 	}
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 94902b82d4ec..a1a78ffaafab 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -1255,6 +1255,7 @@ const struct inode_operations f2fs_dir_inode_operations = {
+ 	.listxattr	= f2fs_listxattr,
+ 	.removexattr	= generic_removexattr,
+ #endif
++	.fiemap		= f2fs_fiemap,
+ };
+ 
+ const struct inode_operations f2fs_symlink_inode_operations = {
+-- 
+2.15.0
+

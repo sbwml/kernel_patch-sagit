@@ -1,0 +1,38 @@
+From 11247087f77cc4fa0492ef6a5c4a18df6719bc3a Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Mon, 18 May 2020 18:00:33 -0700
+Subject: [PATCH 280/420] f2fs: avoid inifinite loop to wait for flushing node
+ pages at cp_error
+
+Shutdown test is somtimes hung, since it keeps trying to flush dirty node pages
+in an inifinite loop. Let's drop dirty pages at umount in that case.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/node.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index b4b6343b12c7..43eb44ee7990 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1518,8 +1518,15 @@ static int __write_node_page(struct page *page, bool atomic, bool *submitted,
+ 
+ 	trace_f2fs_writepage(page, NODE);
+ 
+-	if (unlikely(f2fs_cp_error(sbi)))
++	if (unlikely(f2fs_cp_error(sbi))) {
++		if (is_sbi_flag_set(sbi, SBI_IS_CLOSE)) {
++			ClearPageUptodate(page);
++			dec_page_count(sbi, F2FS_DIRTY_NODES);
++			unlock_page(page);
++			return 0;
++		}
+ 		goto redirty_out;
++	}
+ 
+ 	if (unlikely(is_sbi_flag_set(sbi, SBI_POR_DOING)))
+ 		goto redirty_out;
+-- 
+2.15.0
+

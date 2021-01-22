@@ -1,0 +1,32 @@
+From 96254ec2f611216c807b1d9c8871f608e4c97643 Mon Sep 17 00:00:00 2001
+From: Alex Naidis <alex.naidis@linux.com>
+Date: Wed, 5 Jul 2017 16:50:59 +0200
+Subject: [PATCH 044/420] binder: Disable debug mask
+
+According to Google we should set this to 0
+as there is excessive logging in specific usecases
+which has a negative impact on latency.
+
+Change-Id: If03401694c2b746b5e2111cb5daafa8eab169e29
+Signed-off-by: Alex Naidis <alex.naidis@linux.com>
+---
+ drivers/android/binder.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index ae024a589c9f..a7e8d51c006f 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -137,8 +137,7 @@ enum {
+ 	BINDER_DEBUG_PRIORITY_CAP           = 1U << 13,
+ 	BINDER_DEBUG_SPINLOCKS              = 1U << 14,
+ };
+-static uint32_t binder_debug_mask = BINDER_DEBUG_USER_ERROR |
+-	BINDER_DEBUG_FAILED_TRANSACTION | BINDER_DEBUG_DEAD_TRANSACTION;
++static uint32_t binder_debug_mask = 0;
+ module_param_named(debug_mask, binder_debug_mask, uint, 0644);
+ 
+ static char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
+-- 
+2.15.0
+

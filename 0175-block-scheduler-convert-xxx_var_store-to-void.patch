@@ -1,0 +1,113 @@
+From 673bc6b5e5dfb8cacb7ab0fe97d4264308261395 Mon Sep 17 00:00:00 2001
+From: weiping zhang <zhangweiping@didichuxing.com>
+Date: Fri, 25 Aug 2017 01:11:33 +0800
+Subject: [PATCH 175/420] block, scheduler: convert xxx_var_store to void
+
+commit 235f8da119351ae583abfbbf577eb61a8b564203 upstream.
+
+The last parameter "count" never be used in xxx_var_store,
+convert these functions to void.
+
+Signed-off-by: weiping zhang <zhangweiping@didichuxing.com>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Signed-off-by: Harsh Shandilya <harsh@prjkt.io>
+---
+ block/cfq-iosched.c      | 13 ++++++-------
+ block/deadline-iosched.c |  9 ++++-----
+ 2 files changed, 10 insertions(+), 12 deletions(-)
+
+diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+index 3bfd0c43035d..55a0e20d9071 100644
+--- a/block/cfq-iosched.c
++++ b/block/cfq-iosched.c
+@@ -4668,13 +4668,12 @@ cfq_var_show(unsigned int var, char *page)
+ 	return sprintf(page, "%u\n", var);
+ }
+ 
+-static ssize_t
+-cfq_var_store(unsigned int *var, const char *page, size_t count)
++static void
++cfq_var_store(unsigned int *var, const char *page)
+ {
+ 	char *p = (char *) page;
+ 
+ 	*var = simple_strtoul(p, &p, 10);
+-	return count;
+ }
+ 
+ #define SHOW_FUNCTION(__FUNC, __VAR, __CONV)				\
+@@ -4720,7 +4719,7 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)
+ {									\
+ 	struct cfq_data *cfqd = e->elevator_data;			\
+ 	unsigned int __data;						\
+-	int ret = cfq_var_store(&__data, (page), count);		\
++	cfq_var_store(&__data, (page));					\
+ 	if (__data < (MIN))						\
+ 		__data = (MIN);						\
+ 	else if (__data > (MAX))					\
+@@ -4729,7 +4728,7 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)
+ 		*(__PTR) = (u64)__data * NSEC_PER_MSEC;			\
+ 	else								\
+ 		*(__PTR) = __data;					\
+-	return ret;							\
++	return count;							\
+ }
+ STORE_FUNCTION(cfq_quantum_store, &cfqd->cfq_quantum, 1, UINT_MAX, 0);
+ STORE_FUNCTION(cfq_fifo_expire_sync_store, &cfqd->cfq_fifo_expire[1], 1,
+@@ -4754,13 +4753,13 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)
+ {									\
+ 	struct cfq_data *cfqd = e->elevator_data;			\
+ 	unsigned int __data;						\
+-	int ret = cfq_var_store(&__data, (page), count);		\
++	cfq_var_store(&__data, (page));					\
+ 	if (__data < (MIN))						\
+ 		__data = (MIN);						\
+ 	else if (__data > (MAX))					\
+ 		__data = (MAX);						\
+ 	*(__PTR) = (u64)__data * NSEC_PER_USEC;				\
+-	return ret;							\
++	return count;							\
+ }
+ USEC_STORE_FUNCTION(cfq_slice_idle_us_store, &cfqd->cfq_slice_idle, 0, UINT_MAX);
+ USEC_STORE_FUNCTION(cfq_group_idle_us_store, &cfqd->cfq_group_idle, 0, UINT_MAX);
+diff --git a/block/deadline-iosched.c b/block/deadline-iosched.c
+index 299034985356..5c0d27f14e72 100644
+--- a/block/deadline-iosched.c
++++ b/block/deadline-iosched.c
+@@ -379,13 +379,12 @@ deadline_var_show(int var, char *page)
+ 	return sprintf(page, "%d\n", var);
+ }
+ 
+-static ssize_t
+-deadline_var_store(int *var, const char *page, size_t count)
++static void
++deadline_var_store(int *var, const char *page)
+ {
+ 	char *p = (char *) page;
+ 
+ 	*var = simple_strtol(p, &p, 10);
+-	return count;
+ }
+ 
+ #define SHOW_FUNCTION(__FUNC, __VAR, __CONV)				\
+@@ -409,7 +408,7 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)
+ {									\
+ 	struct deadline_data *dd = e->elevator_data;			\
+ 	int __data;							\
+-	int ret = deadline_var_store(&__data, (page), count);		\
++	deadline_var_store(&__data, (page));				\
+ 	if (__data < (MIN))						\
+ 		__data = (MIN);						\
+ 	else if (__data > (MAX))					\
+@@ -418,7 +417,7 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)
+ 		*(__PTR) = msecs_to_jiffies(__data);			\
+ 	else								\
+ 		*(__PTR) = __data;					\
+-	return ret;							\
++	return count;							\
+ }
+ STORE_FUNCTION(deadline_read_expire_store, &dd->fifo_expire[READ], 0, INT_MAX, 1);
+ STORE_FUNCTION(deadline_write_expire_store, &dd->fifo_expire[WRITE], 0, INT_MAX, 1);
+-- 
+2.15.0
+

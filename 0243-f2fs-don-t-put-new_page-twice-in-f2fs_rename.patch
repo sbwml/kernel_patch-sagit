@@ -1,0 +1,56 @@
+From af781c919e0bc0ac6798231ae085e6b060091d9c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Wed, 11 Dec 2019 15:10:47 -0800
+Subject: [PATCH 243/420] f2fs: don't put new_page twice in f2fs_rename
+
+In f2fs_rename(), new_page is gone after f2fs_set_link(), but it tries
+to put again when whiteout is failed and jumped to put_out_dir.
+
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/namei.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 747b88051968..b3b81fe98338 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -827,7 +827,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	struct inode *old_inode = d_inode(old_dentry);
+ 	struct inode *new_inode = d_inode(new_dentry);
+ 	struct inode *whiteout = NULL;
+-	struct page *old_dir_page;
++	struct page *old_dir_page = NULL;
+ 	struct page *old_page, *new_page = NULL;
+ 	struct f2fs_dir_entry *old_dir_entry = NULL;
+ 	struct f2fs_dir_entry *old_entry;
+@@ -906,6 +906,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			goto put_out_dir;
+ 
+ 		f2fs_set_link(new_dir, new_entry, new_page, old_inode);
++		new_page = NULL;
+ 
+ 		new_inode->i_ctime = current_time(new_inode);
+ 		down_write(&F2FS_I(new_inode)->i_sem);
+@@ -967,6 +968,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	f2fs_mark_inode_dirty_sync(old_inode, false);
+ 
+ 	f2fs_delete_entry(old_entry, old_page, old_dir, NULL);
++	old_page = NULL;
+ 
+ 	if (whiteout) {
+ 		set_inode_flag(whiteout, FI_INC_LINK);
+@@ -1002,8 +1004,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 
+ put_out_dir:
+ 	f2fs_unlock_op(sbi);
+-	if (new_page)
+-		f2fs_put_page(new_page, 0);
++	f2fs_put_page(new_page, 0);
+ out_dir:
+ 	if (old_dir_entry)
+ 		f2fs_put_page(old_dir_page, 0);
+-- 
+2.15.0
+

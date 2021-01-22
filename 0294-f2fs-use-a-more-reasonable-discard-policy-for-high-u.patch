@@ -1,0 +1,48 @@
+From f1798188f8882335e578054e44ec7fcca1e2e3ae Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Tue, 14 May 2019 14:42:14 +0900
+Subject: [PATCH 294/420] f2fs: use a more reasonable discard policy for high
+ utilization
+
+Waking up discard thread on 50ms interval is way too aggressive,
+even when the user has only 20% of space left.
+
+60000ms vs 50ms is too much of a stark difference.
+
+Use 10 seconds instead.
+The use of Rapid GC also makes this switch more reasonable.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/f2fs/f2fs.h    | 1 +
+ fs/f2fs/segment.c | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 95b97952ca9e..63b2a929c109 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -255,6 +255,7 @@ enum {
+ #define DEF_MID_DISCARD_ISSUE_TIME	500	/* 500 ms, if device busy */
+ #define DEF_MAX_DISCARD_ISSUE_TIME	60000	/* 60 s, if no candidates */
+ #define DEF_DISCARD_URGENT_UTIL		80	/* do more discard over 80% */
++#define DEF_MAX_DISCARD_URGENT_ISSUE_TIME	10000	/* 10 s, if no candidates on high utilization */
+ #define DEF_CP_INTERVAL			60	/* 60 secs */
+ #define DEF_IDLE_INTERVAL		5	/* 5 secs */
+ #define DEF_DISABLE_INTERVAL		5	/* 5 secs */
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index a2a987bc9d5d..d9b6f22dc448 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -1169,7 +1169,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
+ 		dpolicy->ordered = true;
+ 		if (utilization(sbi) > DEF_DISCARD_URGENT_UTIL) {
+ 			dpolicy->granularity = 1;
+-			dpolicy->max_interval = DEF_MIN_DISCARD_ISSUE_TIME;
++			dpolicy->max_interval = DEF_MAX_DISCARD_URGENT_ISSUE_TIME;
+ 		}
+ 	} else if (discard_type == DPOLICY_FORCE) {
+ 		dpolicy->min_interval = 1;
+-- 
+2.15.0
+

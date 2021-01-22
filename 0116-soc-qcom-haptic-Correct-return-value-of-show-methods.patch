@@ -1,0 +1,50 @@
+From cf04496b9c4558bce858813cf33dc1b8e931d36d Mon Sep 17 00:00:00 2001
+From: Zhao Wei Liew <zhaoweiliew@gmail.com>
+Date: Thu, 1 Nov 2018 10:05:30 +0000
+Subject: [PATCH 116/420] soc: qcom: haptic: Correct return value of show()
+ methods
+
+By convention, these methods should return the number of bytes
+actually written into the buffer, not the number of bytes that
+would have been written.
+
+Change-Id: Iab8b292397bf3cbbf4a59a72812d3831ac7722c4
+Signed-off-by: Zhao Wei Liew <zhaoweiliew@gmail.com>
+---
+ drivers/soc/qcom/qpnp-haptic.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/soc/qcom/qpnp-haptic.c b/drivers/soc/qcom/qpnp-haptic.c
+index c4f311f4afc4..d8f7c227207c 100644
+--- a/drivers/soc/qcom/qpnp-haptic.c
++++ b/drivers/soc/qcom/qpnp-haptic.c
+@@ -1805,7 +1805,7 @@ static ssize_t qpnp_hap_min_show(struct device *dev,
+ 	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+ 					 timed_dev);
+ 
+-	return snprintf(buf, PAGE_SIZE, "%d\n", hap->vtg_min);
++	return scnprintf(buf, PAGE_SIZE, "%d\n", hap->vtg_min);
+ }
+ 
+ static ssize_t qpnp_hap_max_show(struct device *dev,
+@@ -1815,7 +1815,7 @@ static ssize_t qpnp_hap_max_show(struct device *dev,
+ 	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+ 					 timed_dev);
+ 
+-	return snprintf(buf, PAGE_SIZE, "%d\n", hap->vtg_max);
++	return scnprintf(buf, PAGE_SIZE, "%d\n", hap->vtg_max);
+ }
+ 
+ static ssize_t qpnp_hap_default_show(struct device *dev,
+@@ -1825,7 +1825,7 @@ static ssize_t qpnp_hap_default_show(struct device *dev,
+ 	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+ 					 timed_dev);
+ 
+-	return snprintf(buf, PAGE_SIZE, "%d\n", hap->vtg_default);
++	return scnprintf(buf, PAGE_SIZE, "%d\n", hap->vtg_default);
+ }
+ 
+ /* sysfs attributes */
+-- 
+2.15.0
+

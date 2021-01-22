@@ -1,0 +1,51 @@
+From 5854fe9dc2e44d4071d10839d0f5a8b2bbdc6f2d Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 12 Jul 2019 16:57:00 +0800
+Subject: [PATCH 184/420] f2fs: disallow switching io_bits option during
+ remount
+
+If IO alignment feature is turned on after remount, we didn't
+initialize mempool of it, it turns out we will encounter panic
+during IO submission due to access NULL mempool pointer.
+
+This feature should be set only at mount time, so simply deny
+configuring during remount.
+
+This fixes bug reported in bugzilla:
+
+https://bugzilla.kernel.org/show_bug.cgi?id=204135
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/super.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 42c3e05d10aa..cfba08f045be 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1528,6 +1528,7 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
+ 	bool need_stop_gc = false;
+ 	bool no_extent_cache = !test_opt(sbi, EXTENT_CACHE);
+ 	bool disable_checkpoint = test_opt(sbi, DISABLE_CHECKPOINT);
++	bool no_io_align = !F2FS_IO_ALIGNED(sbi);
+ 	bool checkpoint_changed;
+ #ifdef CONFIG_QUOTA
+ 	int i, j;
+@@ -1607,6 +1608,12 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
+ 		goto restore_opts;
+ 	}
+ 
++	if (no_io_align == !!F2FS_IO_ALIGNED(sbi)) {
++		err = -EINVAL;
++		f2fs_warn(sbi, "switch io_bits option is not allowed");
++		goto restore_opts;
++	}
++
+ 	if ((*flags & MS_RDONLY) && test_opt(sbi, DISABLE_CHECKPOINT)) {
+ 		err = -EINVAL;
+ 		f2fs_warn(sbi, "disabling checkpoint not compatible with read-only");
+-- 
+2.15.0
+

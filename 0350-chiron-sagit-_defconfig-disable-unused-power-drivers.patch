@@ -1,0 +1,40 @@
+From 4dd66b2023dc47789a9bbaa92933e6509cc18473 Mon Sep 17 00:00:00 2001
+From: Patrick Tjin <pattjin@google.com>
+Date: Mon, 30 Oct 2017 14:48:42 -0700
+Subject: [PATCH 350/420] {chiron,sagit}_defconfig: disable unused power
+ drivers
+
+Change-Id: Idb250458ed3f36b2134ca584813c63106ee12de2
+Signed-off-by: Patrick Tjin <pattjin@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 -
+ arch/arm64/configs/sagit_defconfig  | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index f849f81cfd7f..92beef34b694 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -388,7 +388,6 @@ CONFIG_MSM_BCL_PERIPHERAL_CTL=y
+ CONFIG_BATTERY_BCL=y
+ CONFIG_QPNP_SMB2=y
+ CONFIG_SMB138X_CHARGER=y
+-CONFIG_QPNP_QNOVO=y
+ CONFIG_MSM_PM=y
+ CONFIG_MSM_APM=y
+ CONFIG_SENSORS_QPNP_ADC_VOLTAGE=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index f849f81cfd7f..92beef34b694 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -388,7 +388,6 @@ CONFIG_MSM_BCL_PERIPHERAL_CTL=y
+ CONFIG_BATTERY_BCL=y
+ CONFIG_QPNP_SMB2=y
+ CONFIG_SMB138X_CHARGER=y
+-CONFIG_QPNP_QNOVO=y
+ CONFIG_MSM_PM=y
+ CONFIG_MSM_APM=y
+ CONFIG_SENSORS_QPNP_ADC_VOLTAGE=y
+-- 
+2.15.0
+

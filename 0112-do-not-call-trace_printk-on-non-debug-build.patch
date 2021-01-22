@@ -1,0 +1,77 @@
+From b97e16ca2d2076fb9f7ea553a272dbc572409060 Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Sun, 10 Sep 2017 14:27:05 -0700
+Subject: [PATCH 112/420] do not call trace_printk on non-debug build
+
+trace_printk will cause trace_printk_init_buffers executed in kernel
+start. Remove them from non-debug build.
+
+Test: see nasty message gone in dmesg
+Bug: 64215528
+Change-Id: I82b8435a3cf36123608aae572c843db8ad86ac8a
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ drivers/media/platform/msm/camera_v2/pproc/cpp/msm_cpp.c |  4 ++++
+ sound/soc/msm/qdsp6v2/msm-pcm-q6-noirq.c                 | 12 +++++++++---
+ 2 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/msm/camera_v2/pproc/cpp/msm_cpp.c b/drivers/media/platform/msm/camera_v2/pproc/cpp/msm_cpp.c
+index d75af08846cd..48b7488cd233 100644
+--- a/drivers/media/platform/msm/camera_v2/pproc/cpp/msm_cpp.c
++++ b/drivers/media/platform/msm/camera_v2/pproc/cpp/msm_cpp.c
+@@ -450,10 +450,12 @@ static unsigned long msm_cpp_queue_buffer_info(struct cpp_device *cpp_dev,
+ 	buff->map_info.buff_info = *buffer_info;
+ 	buff->map_info.buf_fd = buffer_info->fd;
+ 
++#if defined(CONFIG_TRACING) && defined(DEBUG)
+ 	trace_printk("fd %d index %d native_buff %d ssid %d %d\n",
+ 		buffer_info->fd, buffer_info->index,
+ 		buffer_info->native_buff, buff_queue->session_id,
+ 		buff_queue->stream_id);
++#endif
+ 
+ 	if (buff_queue->security_mode == SECURE_MODE)
+ 		rc = cam_smmu_get_stage2_phy_addr(cpp_dev->iommu_hdl,
+@@ -485,10 +487,12 @@ static void msm_cpp_dequeue_buffer_info(struct cpp_device *cpp_dev,
+ {
+ 	int ret = -1;
+ 
++#if defined(CONFIG_TRACING) && defined(DEBUG)
+ 	trace_printk("fd %d index %d native_buf %d ssid %d %d\n",
+ 		buff->map_info.buf_fd, buff->map_info.buff_info.index,
+ 		buff->map_info.buff_info.native_buff, buff_queue->session_id,
+ 		buff_queue->stream_id);
++#endif
+ 
+ 	if (buff_queue->security_mode == SECURE_MODE)
+ 		ret = cam_smmu_put_stage2_phy_addr(cpp_dev->iommu_hdl,
+diff --git a/sound/soc/msm/qdsp6v2/msm-pcm-q6-noirq.c b/sound/soc/msm/qdsp6v2/msm-pcm-q6-noirq.c
+index 4ef4ae7d72c8..d0eb0381bd81 100644
+--- a/sound/soc/msm/qdsp6v2/msm-pcm-q6-noirq.c
++++ b/sound/soc/msm/qdsp6v2/msm-pcm-q6-noirq.c
+@@ -53,13 +53,19 @@ struct snd_msm {
+ #define CMD_EOS_MIN_TIMEOUT_LENGTH  50
+ #define CMD_EOS_TIMEOUT_MULTIPLIER  (HZ * 50)
+ 
++#if defined(CONFIG_TRACING) && defined(DEBUG)
++#define msm_trace_printk(...) trace_printk(__VA_ARGS__)
++#else
++#define msm_trace_printk(...)
++#endif
++
+ #define ATRACE_END() \
+-	trace_printk("tracing_mark_write: E\n")
++	msm_trace_printk("tracing_mark_write: E\n")
+ #define ATRACE_BEGIN(name) \
+-	trace_printk("tracing_mark_write: B|%d|%s\n", current->tgid, name)
++	msm_trace_printk("tracing_mark_write: B|%d|%s\n", current->tgid, name)
+ #define ATRACE_FUNC() ATRACE_BEGIN(__func__)
+ #define ATRACE_INT(name, value) \
+-	trace_printk("tracing_mark_write: C|%d|%s|%d\n", \
++	msm_trace_printk("tracing_mark_write: C|%d|%s|%d\n", \
+ 			current->tgid, name, (int)(value))
+ 
+ #define SIO_PLAYBACK_MAX_PERIOD_SIZE PLAYBACK_MAX_PERIOD_SIZE
+-- 
+2.15.0
+

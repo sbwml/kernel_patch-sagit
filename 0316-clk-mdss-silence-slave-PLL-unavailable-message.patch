@@ -1,0 +1,26 @@
+From 6ca52c8bbe793f37faacb1acf965e5495498c21e Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Sun, 12 Nov 2017 19:02:23 +0200
+Subject: [PATCH 316/420] clk: mdss: silence slave PLL unavailable message
+
+Change-Id: Ife6dc30ef6e498915af38661c4c8450363cf7a04
+---
+ drivers/clk/msm/mdss/mdss-dsi-pll-8998.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/clk/msm/mdss/mdss-dsi-pll-8998.c b/drivers/clk/msm/mdss/mdss-dsi-pll-8998.c
+index 040707e58e25..741cb474a679 100644
+--- a/drivers/clk/msm/mdss/mdss-dsi-pll-8998.c
++++ b/drivers/clk/msm/mdss/mdss-dsi-pll-8998.c
+@@ -191,7 +191,7 @@ static void dsi_pll_config_slave(struct mdss_pll_resources *rsc)
+ 	rsc->slave = NULL;
+ 
+ 	if (!orsc) {
+-		pr_warn("slave PLL unavilable, assuming standalone config\n");
++		pr_debug("slave PLL unavilable, assuming standalone config\n");
+ 		return;
+ 	}
+ 
+-- 
+2.15.0
+

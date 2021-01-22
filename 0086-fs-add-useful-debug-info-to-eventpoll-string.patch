@@ -1,0 +1,40 @@
+From 7e4b38bfc08c81857c3a1f3390f258ed7db06e22 Mon Sep 17 00:00:00 2001
+From: John Dias <joaodias@google.com>
+Date: Thu, 20 Oct 2016 10:28:32 -0700
+Subject: [PATCH 086/420] fs: add useful debug info to eventpoll string
+
+Add pid and file to facilitate debugging when eventpoll wakeup
+prevents sleeping.
+
+Bug: 32180327
+Change-Id: I34bada5ddab04cf3830762c745f46bfcd1549cb8
+Signed-off-by: John Dias <joaodias@google.com>
+---
+ fs/eventpoll.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/eventpoll.c b/fs/eventpoll.c
+index ac21caad6729..df21fc0cda2b 100644
+--- a/fs/eventpoll.c
++++ b/fs/eventpoll.c
+@@ -1238,13 +1238,15 @@ static int ep_create_wakeup_source(struct epitem *epi)
+ 	const char *name;
+ 	struct wakeup_source *ws;
+ 
++	name = epi->ffd.file->f_path.dentry->d_name.name;
+ 	if (!epi->ep->ws) {
+-		epi->ep->ws = wakeup_source_register("eventpoll");
++		char buf[64];
++		snprintf(buf, sizeof(buf), "eventpoll pid:%d file:%s", current->pid, name);
++		epi->ep->ws = wakeup_source_register(buf);
+ 		if (!epi->ep->ws)
+ 			return -ENOMEM;
+ 	}
+ 
+-	name = epi->ffd.file->f_path.dentry->d_name.name;
+ 	ws = wakeup_source_register(name);
+ 
+ 	if (!ws)
+-- 
+2.15.0
+

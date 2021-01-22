@@ -1,0 +1,28 @@
+From a98cbde307a4d377fbe83cc64337f6bbc532b900 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Fri, 1 Nov 2019 09:34:21 -0700
+Subject: [PATCH 226/420] f2fs: avoid kernel panic on corruption test
+
+xfstests/generic/475 complains kernel warn/panic while testing corrupted disk.
+
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/node.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 3c84ccbeee32..567a810b684e 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -2352,7 +2352,6 @@ static int __f2fs_build_free_nids(struct f2fs_sb_info *sbi,
+ 
+ 			if (ret) {
+ 				up_read(&nm_i->nat_tree_lock);
+-				f2fs_bug_on(sbi, !mount);
+ 				f2fs_err(sbi, "NAT is corrupt, run fsck to fix it");
+ 				return ret;
+ 			}
+-- 
+2.15.0
+

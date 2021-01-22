@@ -1,0 +1,41 @@
+From a4f1a08e700bbb67440de1c355298127bfe075ee Mon Sep 17 00:00:00 2001
+From: Siqi Lin <siqilin@google.com>
+Date: Fri, 8 Sep 2017 16:40:31 -0700
+Subject: [PATCH 074/420] ANDROID: fs/pstore/ramoops: Use vmalloc() for old
+ buffer
+
+console-ramoops size can be big enough for kmalloc() to
+fail due to memory fragmentation. Use vmalloc() instead.
+
+Bug: 65495856
+Change-Id: I28c7ba97e8ebfd6b8f4ebfe9296a2d76fa6e2652
+Signed-off-by: Siqi Lin <siqilin@google.com>
+---
+ fs/pstore/ram_core.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/pstore/ram_core.c b/fs/pstore/ram_core.c
+index 11e558efd61e..cdf82f4b5698 100644
+--- a/fs/pstore/ram_core.c
++++ b/fs/pstore/ram_core.c
+@@ -291,7 +291,7 @@ void persistent_ram_save_old(struct persistent_ram_zone *prz)
+ 
+ 	if (!prz->old_log) {
+ 		persistent_ram_ecc_old(prz);
+-		prz->old_log = kmalloc(size, GFP_KERNEL);
++		prz->old_log = vmalloc(size);
+ 	}
+ 	if (!prz->old_log) {
+ 		pr_err("failed to allocate buffer\n");
+@@ -377,7 +377,7 @@ void *persistent_ram_old(struct persistent_ram_zone *prz)
+ 
+ void persistent_ram_free_old(struct persistent_ram_zone *prz)
+ {
+-	kfree(prz->old_log);
++	vfree(prz->old_log);
+ 	prz->old_log = NULL;
+ 	prz->old_log_size = 0;
+ }
+-- 
+2.15.0
+

@@ -1,0 +1,68 @@
+From 3f0467f56ff8848c874cc1402eedbfd4a16cb51b Mon Sep 17 00:00:00 2001
+From: Corey Tabaka <eieio@google.com>
+Date: Mon, 25 Sep 2017 14:25:48 -0700
+Subject: [PATCH 043/420] ANDROID: binder: Switch binder_deferred_lock to a
+ spinlock.
+
+Avoid delays in binder transactions due to preemption of
+binder_deferred_func() with binder_deferred_lock held.
+
+Bug: 66914906
+Test: boots; binder tests pass; trace analysis in bug
+Change-Id: I1a89ba15b27e43552890292f135a5e2d969231e2
+Signed-off-by: Corey Tabaka <eieio@google.com>
+---
+ drivers/android/binder.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index 9fa18e8f25ac..ae024a589c9f 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -76,7 +76,7 @@
+ #include "binder_trace.h"
+ 
+ static HLIST_HEAD(binder_deferred_list);
+-static DEFINE_MUTEX(binder_deferred_lock);
++static DEFINE_SPINLOCK(binder_deferred_lock);
+ 
+ static HLIST_HEAD(binder_devices);
+ static HLIST_HEAD(binder_procs);
+@@ -5329,7 +5329,7 @@ static void binder_deferred_func(struct work_struct *work)
+ 	int defer;
+ 
+ 	do {
+-		mutex_lock(&binder_deferred_lock);
++		spin_lock(&binder_deferred_lock);
+ 		if (!hlist_empty(&binder_deferred_list)) {
+ 			proc = hlist_entry(binder_deferred_list.first,
+ 					struct binder_proc, deferred_work_node);
+@@ -5340,7 +5340,7 @@ static void binder_deferred_func(struct work_struct *work)
+ 			proc = NULL;
+ 			defer = 0;
+ 		}
+-		mutex_unlock(&binder_deferred_lock);
++		spin_unlock(&binder_deferred_lock);
+ 
+ 		files = NULL;
+ 		if (defer & BINDER_DEFERRED_PUT_FILES) {
+@@ -5366,14 +5366,14 @@ static DECLARE_WORK(binder_deferred_work, binder_deferred_func);
+ static void
+ binder_defer_work(struct binder_proc *proc, enum binder_deferred_state defer)
+ {
+-	mutex_lock(&binder_deferred_lock);
++	spin_lock(&binder_deferred_lock);
+ 	proc->deferred_work |= defer;
+ 	if (hlist_unhashed(&proc->deferred_work_node)) {
+ 		hlist_add_head(&proc->deferred_work_node,
+ 				&binder_deferred_list);
+ 		queue_work(binder_deferred_workqueue, &binder_deferred_work);
+ 	}
+-	mutex_unlock(&binder_deferred_lock);
++	spin_unlock(&binder_deferred_lock);
+ }
+ 
+ static void print_binder_transaction_ilocked(struct seq_file *m,
+-- 
+2.15.0
+

@@ -1,0 +1,268 @@
+From bf2874e0c1d1e05197b6a295730b51045acb53fe Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 1 Nov 2019 17:53:23 +0800
+Subject: [PATCH 230/420] f2fs: show f2fs instance in printk_ratelimited
+
+As Eric mentioned, bare printk{,_ratelimited} won't show which
+filesystem instance these message is coming from, this patch tries
+to show fs instance with sb->s_id field in all places we missed
+before.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/checkpoint.c |  2 +-
+ fs/f2fs/data.c       |  7 ++++---
+ fs/f2fs/dir.c        |  7 ++++---
+ fs/f2fs/f2fs.h       | 24 +++++++++++++-----------
+ fs/f2fs/file.c       |  2 +-
+ fs/f2fs/gc.c         |  2 +-
+ fs/f2fs/inode.c      |  2 +-
+ fs/f2fs/node.c       |  2 +-
+ fs/f2fs/segment.c    |  9 +++++----
+ 9 files changed, 31 insertions(+), 26 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index 1e27252368c8..a04948572217 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -582,7 +582,7 @@ int f2fs_acquire_orphan_inode(struct f2fs_sb_info *sbi)
+ 
+ 	if (time_to_inject(sbi, FAULT_ORPHAN)) {
+ 		spin_unlock(&im->ino_lock);
+-		f2fs_show_injection_info(FAULT_ORPHAN);
++		f2fs_show_injection_info(sbi, FAULT_ORPHAN);
+ 		return -ENOSPC;
+ 	}
+ 
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 9112513e4fe3..f4b806170cb6 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -145,9 +145,10 @@ static bool f2fs_bio_post_read_required(struct bio *bio)
+ static void f2fs_read_end_io(struct bio *bio)
+ {
+ 	struct page *first_page = bio->bi_io_vec[0].bv_page;
++	struct f2fs_sb_info *sbi = F2FS_P_SB(bio->bi_io_vec->bv_page);
+ 
+-	if (time_to_inject(F2FS_P_SB(bio->bi_io_vec->bv_page), FAULT_READ_IO)) {
+-		f2fs_show_injection_info(FAULT_READ_IO);
++	if (time_to_inject(sbi, FAULT_READ_IO)) {
++		f2fs_show_injection_info(sbi, FAULT_READ_IO);
+ 		bio->bi_error = -EIO;
+ 	}
+ 
+@@ -176,7 +177,7 @@ static void f2fs_write_end_io(struct bio *bio)
+ 	int i;
+ 
+ 	if (time_to_inject(sbi, FAULT_WRITE_IO)) {
+-		f2fs_show_injection_info(FAULT_WRITE_IO);
++		f2fs_show_injection_info(sbi, FAULT_WRITE_IO);
+ 		bio->bi_error = -EIO;
+ 	}
+ 
+diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+index 370b44c79e01..df2a196bd4e4 100644
+--- a/fs/f2fs/dir.c
++++ b/fs/f2fs/dir.c
+@@ -514,7 +514,7 @@ int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
+ 
+ start:
+ 	if (time_to_inject(F2FS_I_SB(dir), FAULT_DIR_DEPTH)) {
+-		f2fs_show_injection_info(FAULT_DIR_DEPTH);
++		f2fs_show_injection_info(F2FS_I_SB(dir), FAULT_DIR_DEPTH);
+ 		return -ENOSPC;
+ 	}
+ 
+@@ -805,8 +805,9 @@ int f2fs_fill_dentries(struct dir_context *ctx, struct f2fs_dentry_ptr *d,
+ 			bit_pos++;
+ 			ctx->pos = start_pos + bit_pos;
+ 			printk_ratelimited(
+-				"%s, invalid namelen(0), ino:%u, run fsck to fix.",
+-				KERN_WARNING, le32_to_cpu(de->ino));
++				"%sF2FS-fs (%s): invalid namelen(0), ino:%u, run fsck to fix.",
++				KERN_WARNING, sbi->sb->s_id,
++				le32_to_cpu(de->ino));
+ 			set_sbi_flag(sbi, SBI_NEED_FSCK);
+ 			continue;
+ 		}
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index d4e9e90a4362..d2be0c6b0b2e 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1424,9 +1424,10 @@ struct f2fs_private_dio {
+ };
+ 
+ #ifdef CONFIG_F2FS_FAULT_INJECTION
+-#define f2fs_show_injection_info(type)					\
+-	printk_ratelimited("%sF2FS-fs : inject %s in %s of %pF\n",	\
+-		KERN_INFO, f2fs_fault_name[type],			\
++#define f2fs_show_injection_info(sbi, type)					\
++	printk_ratelimited("%sF2FS-fs (%s) : inject %s in %s of %pS\n",	\
++		KERN_INFO, sbi->sb->s_id,				\
++		f2fs_fault_name[type],					\
+ 		__func__, __builtin_return_address(0))
+ static inline bool time_to_inject(struct f2fs_sb_info *sbi, int type)
+ {
+@@ -1446,7 +1447,7 @@ static inline bool time_to_inject(struct f2fs_sb_info *sbi, int type)
+ 	return false;
+ }
+ #else
+-#define f2fs_show_injection_info(type) do { } while (0)
++#define f2fs_show_injection_info(sbi, type) do { } while (0)
+ static inline bool time_to_inject(struct f2fs_sb_info *sbi, int type)
+ {
+ 	return false;
+@@ -1832,7 +1833,7 @@ static inline int inc_valid_block_count(struct f2fs_sb_info *sbi,
+ 		return ret;
+ 
+ 	if (time_to_inject(sbi, FAULT_BLOCK)) {
+-		f2fs_show_injection_info(FAULT_BLOCK);
++		f2fs_show_injection_info(sbi, FAULT_BLOCK);
+ 		release = *count;
+ 		goto release_quota;
+ 	}
+@@ -2084,7 +2085,7 @@ static inline int inc_valid_node_count(struct f2fs_sb_info *sbi,
+ 	}
+ 
+ 	if (time_to_inject(sbi, FAULT_BLOCK)) {
+-		f2fs_show_injection_info(FAULT_BLOCK);
++		f2fs_show_injection_info(sbi, FAULT_BLOCK);
+ 		goto enospc;
+ 	}
+ 
+@@ -2199,7 +2200,8 @@ static inline struct page *f2fs_grab_cache_page(struct address_space *mapping,
+ 			return page;
+ 
+ 		if (time_to_inject(F2FS_M_SB(mapping), FAULT_PAGE_ALLOC)) {
+-			f2fs_show_injection_info(FAULT_PAGE_ALLOC);
++			f2fs_show_injection_info(F2FS_M_SB(mapping),
++							FAULT_PAGE_ALLOC);
+ 			return NULL;
+ 		}
+ 	}
+@@ -2214,7 +2216,7 @@ static inline struct page *f2fs_pagecache_get_page(
+ 				int fgp_flags, gfp_t gfp_mask)
+ {
+ 	if (time_to_inject(F2FS_M_SB(mapping), FAULT_PAGE_GET)) {
+-		f2fs_show_injection_info(FAULT_PAGE_GET);
++		f2fs_show_injection_info(F2FS_M_SB(mapping), FAULT_PAGE_GET);
+ 		return NULL;
+ 	}
+ 
+@@ -2283,7 +2285,7 @@ static inline struct bio *f2fs_bio_alloc(struct f2fs_sb_info *sbi,
+ 		return bio;
+ 	}
+ 	if (time_to_inject(sbi, FAULT_ALLOC_BIO)) {
+-		f2fs_show_injection_info(FAULT_ALLOC_BIO);
++		f2fs_show_injection_info(sbi, FAULT_ALLOC_BIO);
+ 		return NULL;
+ 	}
+ 
+@@ -2852,7 +2854,7 @@ static inline void *f2fs_kmalloc(struct f2fs_sb_info *sbi,
+ 	void *ret;
+ 
+ 	if (time_to_inject(sbi, FAULT_KMALLOC)) {
+-		f2fs_show_injection_info(FAULT_KMALLOC);
++		f2fs_show_injection_info(sbi, FAULT_KMALLOC);
+ 		return NULL;
+ 	}
+ 
+@@ -2883,7 +2885,7 @@ static inline void *f2fs_kvmalloc(struct f2fs_sb_info *sbi,
+ 					size_t size, gfp_t flags)
+ {
+ 	if (time_to_inject(sbi, FAULT_KVMALLOC)) {
+-		f2fs_show_injection_info(FAULT_KVMALLOC);
++		f2fs_show_injection_info(sbi, FAULT_KVMALLOC);
+ 		return NULL;
+ 	}
+ 
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index b0fbfd994019..b48d84e2ef8c 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -679,7 +679,7 @@ int f2fs_truncate(struct inode *inode)
+ 	trace_f2fs_truncate(inode);
+ 
+ 	if (time_to_inject(F2FS_I_SB(inode), FAULT_TRUNCATE)) {
+-		f2fs_show_injection_info(FAULT_TRUNCATE);
++		f2fs_show_injection_info(F2FS_I_SB(inode), FAULT_TRUNCATE);
+ 		return -EIO;
+ 	}
+ 
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index 5b2b28101d39..5ee5b65c1f5b 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -54,7 +54,7 @@ static int gc_thread_func(void *data)
+ 		}
+ 
+ 		if (time_to_inject(sbi, FAULT_CHECKPOINT)) {
+-			f2fs_show_injection_info(FAULT_CHECKPOINT);
++			f2fs_show_injection_info(sbi, FAULT_CHECKPOINT);
+ 			f2fs_stop_checkpoint(sbi, false);
+ 		}
+ 
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 1643d7ad0886..dd30a717541b 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -677,7 +677,7 @@ retry:
+ 		err = f2fs_truncate(inode);
+ 
+ 	if (time_to_inject(sbi, FAULT_EVICT_INODE)) {
+-		f2fs_show_injection_info(FAULT_EVICT_INODE);
++		f2fs_show_injection_info(sbi, FAULT_EVICT_INODE);
+ 		err = -EIO;
+ 	}
+ 
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 567a810b684e..c43a0001674b 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -2401,7 +2401,7 @@ bool f2fs_alloc_nid(struct f2fs_sb_info *sbi, nid_t *nid)
+ 	struct free_nid *i = NULL;
+ retry:
+ 	if (time_to_inject(sbi, FAULT_ALLOC_NID)) {
+-		f2fs_show_injection_info(FAULT_ALLOC_NID);
++		f2fs_show_injection_info(sbi, FAULT_ALLOC_NID);
+ 		return false;
+ 	}
+ 
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index 683ea7d884f6..45b4330106cc 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -480,7 +480,7 @@ int f2fs_commit_inmem_pages(struct inode *inode)
+ void f2fs_balance_fs(struct f2fs_sb_info *sbi, bool need)
+ {
+ 	if (time_to_inject(sbi, FAULT_CHECKPOINT)) {
+-		f2fs_show_injection_info(FAULT_CHECKPOINT);
++		f2fs_show_injection_info(sbi, FAULT_CHECKPOINT);
+ 		f2fs_stop_checkpoint(sbi, false);
+ 	}
+ 
+@@ -1007,8 +1007,9 @@ static void __remove_discard_cmd(struct f2fs_sb_info *sbi,
+ 
+ 	if (dc->error)
+ 		printk_ratelimited(
+-			"%sF2FS-fs: Issue discard(%u, %u, %u) failed, ret: %d",
+-			KERN_INFO, dc->lstart, dc->start, dc->len, dc->error);
++			"%sF2FS-fs (%s): Issue discard(%u, %u, %u) failed, ret: %d",
++			KERN_INFO, sbi->sb->s_id,
++			dc->lstart, dc->start, dc->len, dc->error);
+ 	__detach_discard_cmd(dcc, dc);
+ }
+ 
+@@ -1229,7 +1230,7 @@ static int __submit_discard_cmd(struct f2fs_sb_info *sbi,
+ 		dc->len += len;
+ 
+ 		if (time_to_inject(sbi, FAULT_DISCARD)) {
+-			f2fs_show_injection_info(FAULT_DISCARD);
++			f2fs_show_injection_info(sbi, FAULT_DISCARD);
+ 			err = -EIO;
+ 			goto submit;
+ 		}
+-- 
+2.15.0
+

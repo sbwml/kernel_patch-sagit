@@ -1,0 +1,58 @@
+From 289ececaae6c2a3365792af2ea6c5ed3af851207 Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Thu, 16 Nov 2017 21:21:20 +0200
+Subject: [PATCH 306/420] dts: xiaomi: msm8998: rewrite notification led
+ configuration
+
+Taken from sambar.
+
+* smooth out duty percents
+* increase low and high duration
+* lower ramp step duration
+* allow reverse, high, and low configuration
+
+Change-Id: I9727a923351a3e3403ecfbafb993121bb74112ad
+---
+ arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi | 7 +++++++
+ arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi  | 7 +++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
+index 030d80e053bc..bef28d1ee299 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
+@@ -749,6 +749,13 @@
+ 
+ &red_led { /* Notification LED */
+ 	qcom,use-blink;
++	qcom,start-idx = <0>;
++	qcom,idx-len = <8>;
++	qcom,duty-pcts = [ 00 0E 1C 2A 38 46 54 64 ];
++	qcom,lut-flags = <31>; /* loop, ramp up, reverse, pause hi, pause lo */
++	qcom,pause-lo = <500>;
++	qcom,pause-hi = <500>;
++	qcom,ramp-step-ms = <50>;
+ 	linux,name = "white";
+ };
+ 
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
+index ae157c9fc9a6..ffc2d1e15c63 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
+@@ -796,6 +796,13 @@
+ 
+ &red_led { /* Notification LED */
+ 	qcom,use-blink;
++	qcom,start-idx = <0>;
++	qcom,idx-len = <8>;
++	qcom,duty-pcts = [ 00 0E 1C 2A 38 46 54 64 ];
++	qcom,lut-flags = <31>; /* loop, ramp up, reverse, pause hi, pause lo */
++	qcom,pause-lo = <500>;
++	qcom,pause-hi = <500>;
++	qcom,ramp-step-ms = <50>;
+ 	linux,name = "white";
+ };
+ 
+-- 
+2.15.0
+

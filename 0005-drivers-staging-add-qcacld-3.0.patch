@@ -1,0 +1,34 @@
+From 4e0fb5122aa685433bd7805065bdca4bc4dc8aea Mon Sep 17 00:00:00 2001
+From: Dan Pasanen <dan.pasanen@gmail.com>
+Date: Fri, 27 Oct 2017 10:22:24 -0500
+Subject: [PATCH 005/420] drivers: staging: add qcacld-3.0
+
+Change-Id: Iefa79c859b7cc8bb72dfe00fd585e5afc25cf46b
+---
+ drivers/staging/Kconfig  | 2 ++
+ drivers/staging/Makefile | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/drivers/staging/Kconfig b/drivers/staging/Kconfig
+index 5d3b86a33857..b179aaacb87c 100644
+--- a/drivers/staging/Kconfig
++++ b/drivers/staging/Kconfig
+@@ -110,4 +110,6 @@ source "drivers/staging/wilc1000/Kconfig"
+ 
+ source "drivers/staging/most/Kconfig"
+ 
++source "drivers/staging/qcacld-3.0/Kconfig"
++
+ endif # STAGING
+diff --git a/drivers/staging/Makefile b/drivers/staging/Makefile
+index 654ee8d54096..13f48c805645 100644
+--- a/drivers/staging/Makefile
++++ b/drivers/staging/Makefile
+@@ -46,3 +46,4 @@ obj-$(CONFIG_FB_TFT)		+= fbtft/
+ obj-$(CONFIG_FSL_MC_BUS)	+= fsl-mc/
+ obj-$(CONFIG_WILC1000)		+= wilc1000/
+ obj-$(CONFIG_MOST)		+= most/
++obj-$(CONFIG_QCA_CLD_WLAN)	+= qcacld-3.0/
+-- 
+2.15.0
+

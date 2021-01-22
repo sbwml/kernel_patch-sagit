@@ -1,0 +1,43 @@
+From 4d6594d121ac2af5fbe60e5204134dcace3e539a Mon Sep 17 00:00:00 2001
+From: Sahitya Tummala <stummala@codeaurora.org>
+Date: Mon, 29 Jul 2019 10:50:26 +0530
+Subject: [PATCH 211/420] f2fs: Fix indefinite loop in f2fs_gc()
+
+Policy - foreground GC, LFS mode and greedy GC mode.
+
+Under this policy, f2fs_gc() loops forever to GC as it doesn't have
+enough free segements to proceed and thus it keeps calling gc_more
+for the same victim segment.  This can happen if the selected victim
+segment could not be GC'd due to failed blkaddr validity check i.e.
+is_alive() returns false for the blocks set in current validity map.
+
+Fix this by not resetting the sbi->cur_victim_sec to NULL_SEGNO, when
+the segment selected could not be GC'd. This helps to select another
+segment for GC and thus helps to proceed forward with GC.
+
+[Note]
+This can happen due to is_alive as well as atomic_file which skipps
+GC.
+
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/gc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index cfaba621eb1f..d32ae37544dd 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -1326,7 +1326,7 @@ gc_more:
+ 		round++;
+ 	}
+ 
+-	if (gc_type == FG_GC)
++	if (gc_type == FG_GC && seg_freed)
+ 		sbi->cur_victim_sec = NULL_SEGNO;
+ 
+ 	if (sync)
+-- 
+2.15.0
+

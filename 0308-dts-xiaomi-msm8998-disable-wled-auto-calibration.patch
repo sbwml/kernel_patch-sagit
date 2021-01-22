@@ -1,0 +1,28 @@
+From 1e62c341ac74f751aa3941dee0a36a137f528710 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Sat, 28 Apr 2018 07:04:57 +0000
+Subject: [PATCH 308/420] dts: xiaomi: msm8998: disable wled auto calibration
+
+Xiaomi reverted the auto calibration support in their kernel, but we can
+disable it in a more elegant way.
+
+Change-Id: I6addcb637ff44e4841dffa1520d0a7202ddd3b14
+---
+ arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
+index 15936d39d92d..7eb33f344931 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
+@@ -46,6 +46,7 @@
+ 
+ &pmi8998_wled {
+ 	qcom,switch-freq-khz = <600>;
++	/delete-property/ qcom,auto-calibration-enable;
+ };
+ 
+ &pmi8998_flash0 {
+-- 
+2.15.0
+

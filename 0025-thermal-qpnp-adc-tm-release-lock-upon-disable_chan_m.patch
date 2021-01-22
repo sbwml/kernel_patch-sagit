@@ -1,0 +1,50 @@
+From 6695ffab9ee0510a6e0483d0f77cf4ff63aa609c Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Sun, 30 Apr 2017 16:43:24 -0700
+Subject: [PATCH 025/420] thermal: qpnp-adc-tm: release lock upon
+ disable_chan_meas failure
+
+This fixes the smath warning below:
+
+drivers/thermal/qpnp-adc-tm.c:2943 qpnp_adc_tm_disable_chan_meas() warn:
+inconsistent returns 'mutex:&chip->adc->adc_lock'.
+
+Bug: 35898203
+Change-Id: I149ed4868cd4754246b3b8845a0af7f1f08c0931
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/thermal/qpnp-adc-tm.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/thermal/qpnp-adc-tm.c b/drivers/thermal/qpnp-adc-tm.c
+index 2df1bf69e7c9..f8c86cbce96b 100644
+--- a/drivers/thermal/qpnp-adc-tm.c
++++ b/drivers/thermal/qpnp-adc-tm.c
+@@ -2915,21 +2915,21 @@ int32_t qpnp_adc_tm_disable_chan_meas(struct qpnp_adc_tm_chip *chip,
+ 					QPNP_BTM_Mn_HIGH_THR_INT_EN, false);
+ 		if (rc < 0) {
+ 			pr_err("high thr disable err:%d\n", btm_chan_num);
+-			return rc;
++			goto fail;
+ 		}
+ 
+ 		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(btm_chan_num),
+ 					QPNP_BTM_Mn_LOW_THR_INT_EN, false);
+ 		if (rc < 0) {
+ 			pr_err("low thr disable err:%d\n", btm_chan_num);
+-			return rc;
++			goto fail;
+ 		}
+ 
+ 		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(btm_chan_num),
+ 					QPNP_BTM_Mn_MEAS_EN, false);
+ 		if (rc < 0) {
+ 			pr_err("multi measurement disable failed\n");
+-			return rc;
++			goto fail;
+ 		}
+ 	}
+ 
+-- 
+2.15.0
+

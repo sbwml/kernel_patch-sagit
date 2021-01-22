@@ -1,0 +1,37 @@
+From f7f850d73a5c34f63fc4b69b5a4a55e079c02cfa Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Tue, 14 May 2019 14:07:12 +0900
+Subject: [PATCH 293/420] f2fs: reduce timeout for uncongestion on
+ f2fs_write_cache_pages()
+
+On high fs utilization, this is hit quite frequently and waiting for a
+whooping 20ms is too expensive, especially on critical paths.
+
+Reduce it to an amount that is unlikely to affect UI rendering paths.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/f2fs/data.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index e528876b88c3..abf7ab22c564 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -2480,8 +2480,11 @@ continue_unlock:
+ 					ret = 0;
+ 					if (wbc->sync_mode == WB_SYNC_ALL) {
+ 						cond_resched();
+-						congestion_wait(BLK_RW_ASYNC,
+-									HZ/50);
++#if (CONFIG_HZ > 100)
++						congestion_wait(BLK_RW_ASYNC, 2);
++#else
++						congestion_wait(BLK_RW_ASYNC, 1);
++#endif
+ 						goto retry_write;
+ 					}
+ 					continue;
+-- 
+2.15.0
+

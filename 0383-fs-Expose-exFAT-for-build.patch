@@ -1,0 +1,37 @@
+From b7ffcf8ba64c6104ef03b0563b93322c2e0bee74 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Tue, 15 Dec 2020 01:44:18 +0800
+Subject: [PATCH 383/420] fs: Expose exFAT for build
+
+---
+ fs/Kconfig  | 1 +
+ fs/Makefile | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 4d90075f54bf..e2b1b70176f5 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -103,6 +103,7 @@ if BLOCK
+ menu "DOS/FAT/NT Filesystems"
+ 
+ source "fs/fat/Kconfig"
++source "fs/exfat/Kconfig"
+ source "fs/sdfat/Kconfig"
+ source "fs/ntfs/Kconfig"
+ 
+diff --git a/fs/Makefile b/fs/Makefile
+index debf0742b3c9..fe12803a5b78 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -77,6 +77,7 @@ obj-$(CONFIG_HUGETLBFS)		+= hugetlbfs/
+ obj-$(CONFIG_CODA_FS)		+= coda/
+ obj-$(CONFIG_MINIX_FS)		+= minix/
+ obj-$(CONFIG_FAT_FS)		+= fat/
++obj-$(CONFIG_EXFAT_FS)		+= exfat/
+ obj-$(CONFIG_SDFAT_FS)		+= sdfat/
+ obj-$(CONFIG_BFS_FS)		+= bfs/
+ obj-$(CONFIG_ISO9660_FS)	+= isofs/
+-- 
+2.15.0
+

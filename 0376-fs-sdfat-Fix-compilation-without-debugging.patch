@@ -1,0 +1,45 @@
+From d457d6eb35ea4aba8186c7d8662e38280d6781cb Mon Sep 17 00:00:00 2001
+From: Paul Keith <javelinanddart@gmail.com>
+Date: Mon, 19 Feb 2018 20:52:10 +0100
+Subject: [PATCH 376/420] fs: sdfat: Fix compilation without debugging
+
+* And make WARNON debugging optional
+
+Change-Id: Id59e908c8a60ded1238d3fd010f3d96cdde95f40
+Signed-off-by: Paul Keith <javelinanddart@gmail.com>
+---
+ fs/sdfat/Kconfig | 5 +++++
+ fs/sdfat/sdfat.h | 1 +
+ 2 files changed, 6 insertions(+)
+
+diff --git a/fs/sdfat/Kconfig b/fs/sdfat/Kconfig
+index 73ed755bbef6..417ff432d8ef 100644
+--- a/fs/sdfat/Kconfig
++++ b/fs/sdfat/Kconfig
+@@ -97,6 +97,11 @@ config SDFAT_DBG_BUGON
+ 	depends on SDFAT_FS && SDFAT_DEBUG
+ 	default n
+ 
++config SDFAT_DBG_WARNON
++	bool "Enable strict WARN_ON() for debugging"
++	depends on SDFAT_FS && SDFAT_DEBUG
++	default n
++
+ config SDFAT_STATISTICS
+ 	bool "Enable statistics for bigdata"
+ 	depends on SDFAT_FS
+diff --git a/fs/sdfat/sdfat.h b/fs/sdfat/sdfat.h
+index 2f10b9603059..a4b7ed3e16c9 100644
+--- a/fs/sdfat/sdfat.h
++++ b/fs/sdfat/sdfat.h
+@@ -393,6 +393,7 @@ void sdfat_debug_check_clusters(struct inode *inode);
+ 
+ #define sdfat_debug_check_clusters(inode)
+ #define sdfat_debug_bug_on(expr)
++#define sdfat_debug_warn_on(expr)
+ 
+ #endif /* CONFIG_SDFAT_DEBUG */
+ 
+-- 
+2.15.0
+

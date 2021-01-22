@@ -1,0 +1,54 @@
+From f7a34cfa807bb8f0b6a9b00947aaca30f0d7afaa Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Thu, 29 Oct 2020 05:00:54 +0800
+Subject: [PATCH 415/420] drivers: Fix parentheses-equality warnings
+
+drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c:346:16: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+        if ((u16_mode == 1)) {
+             ~~~~~~~~~^~~~
+drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c:346:16: note: remove extraneous parentheses around the comparison to silence this warning
+        if ((u16_mode == 1)) {
+            ~         ^   ~
+drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c:346:16: note: use '=' to turn this equality comparison into an assignment
+        if ((u16_mode == 1)) {
+                      ^~
+                      =
+drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c:505:16: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+        if ((u16_mode == 1)) { /* OIS ON */
+             ~~~~~~~~~^~~~
+drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c:505:16: note: remove extraneous parentheses around the comparison to silence this warning
+        if ((u16_mode == 1)) { /* OIS ON */
+            ~         ^   ~
+drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c:505:16: note: use '=' to turn this equality comparison into an assignment
+        if ((u16_mode == 1)) { /* OIS ON */
+                      ^~
+                      =
+---
+ drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c b/drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c
+index 1e0b12c0c2cc..6e3e4a0dce5a 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/ois/OIS_func.c
+@@ -343,7 +343,7 @@ ADJ_STS	func_SET_SCENE_PARAM(OIS_UBYTE u16_scene, OIS_UBYTE u16_mode, OIS_UBYTE
+ 	/* <== RHM_HT 2013/11/25 Modified */
+ 
+ 	/* Enable OIS (if u16_mode = 1) */
+-	if ((u16_mode == 1)) {
++	if (u16_mode == 1) {
+ 		u16_dat = I2C_OIS_mem__read(_M_EQCTL);
+ 		u16_dat = (u16_dat | 0x0101);
+ 		I2C_OIS_mem_write(_M_EQCTL, u16_dat);
+@@ -502,7 +502,7 @@ ADJ_STS	func_SET_SCENE_PARAM_for_NewGYRO_Fil(OIS_UBYTE u16_scene, OIS_UBYTE u16_
+ 	}
+ 	/* <== RHM_HT 2013/11/25 Modified */
+ 	/* Enable OIS (if u16_mode = 1) */
+-	if ((u16_mode == 1)) { /* OIS ON */
++	if (u16_mode == 1) { /* OIS ON */
+ 		u16_dat = I2C_OIS_mem__read(_M_EQCTL);
+ 		u16_dat = (u16_dat & 0xEFFF); /* Clear Halfshutter mode */
+ 		u16_dat = (u16_dat | 0x0101);
+-- 
+2.15.0
+

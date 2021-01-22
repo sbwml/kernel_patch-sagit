@@ -1,0 +1,43 @@
+From 536b6d067bb3a964405cf7933869c69505daa620 Mon Sep 17 00:00:00 2001
+From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Date: Wed, 11 Sep 2019 11:45:17 -0500
+Subject: [PATCH 213/420] f2fs: fix inode rwsem regression
+
+This is similar to 942491c9e6d6 ("xfs: fix AIM7 regression")
+Apparently our current rwsem code doesn't like doing the trylock, then
+lock for real scheme.  So change our read/write methods to just do the
+trylock for the RWF_NOWAIT case.
+
+We don't need a check for IOCB_NOWAIT and !direct-IO because it
+is checked in generic_write_checks().
+
+Fixes: b91050a80cec ("f2fs: add nowait aio support")
+Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index d320d57e2579..ce045cdc0703 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -2949,11 +2949,12 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		goto out;
+ 	}
+ 
+-	if (!inode_trylock(inode)) {
+-		if (iocb->ki_flags & IOCB_NOWAIT) {
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		if (!inode_trylock(inode)) {
+ 			ret = -EAGAIN;
+ 			goto out;
+ 		}
++	} else {
+ 		inode_lock(inode);
+ 	}
+ 
+-- 
+2.15.0
+

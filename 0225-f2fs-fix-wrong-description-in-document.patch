@@ -1,0 +1,33 @@
+From 2d60723f41840a57cb0e1ebe92cb849c9378d93d Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Tue, 22 Oct 2019 17:26:11 +0800
+Subject: [PATCH 225/420] f2fs: fix wrong description in document
+
+As reported in bugzilla, default value of DEF_RAM_THRESHOLD was fixed by
+commit 29710bcf9426 ("f2fs: fix wrong percentage"), however leaving wrong
+description in document, fix it.
+
+https://bugzilla.kernel.org/show_bug.cgi?id=205203
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ Documentation/filesystems/f2fs.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/filesystems/f2fs.txt b/Documentation/filesystems/f2fs.txt
+index c82c00919d50..c8d69dea1fcc 100644
+--- a/Documentation/filesystems/f2fs.txt
++++ b/Documentation/filesystems/f2fs.txt
+@@ -346,7 +346,7 @@ Files in /sys/fs/f2fs/<devname>
+ 
+  ram_thresh                   This parameter controls the memory footprint used
+ 			      by free nids and cached nat entries. By default,
+-			      10 is set, which indicates 10 MB / 1 GB RAM.
++			      1 is set, which indicates 10 MB / 1 GB RAM.
+ 
+  ra_nid_pages		      When building free nids, F2FS reads NAT blocks
+ 			      ahead for speed up. Default is 0.
+-- 
+2.15.0
+

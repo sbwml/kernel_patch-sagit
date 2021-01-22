@@ -1,0 +1,43 @@
+From 6906c3cd9c410ee068ec11a7da7a53df1940cdba Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Fri, 5 May 2017 18:14:09 -0700
+Subject: [PATCH 371/420] {chiron,sagit}_defconfig: CONFIG_HZ_300=y
+
+Bug: 38045690
+Test: Build
+Change-Id: I54f53347358a052cdc11825092a7e94e5f17271c
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 2 +-
+ arch/arm64/configs/sagit_defconfig  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index b6837ee0d4df..b2e4b06fcd9c 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -56,7 +56,7 @@ CONFIG_SCHED_MC=y
+ CONFIG_NR_CPUS=8
+ CONFIG_QCOM_TLB_EL2_HANDLER=y
+ CONFIG_PREEMPT=y
+-CONFIG_HZ_100=y
++CONFIG_HZ_300=y
+ CONFIG_ARM64_REG_REBALANCE_ON_CTX_SW=y
+ CONFIG_CMA=y
+ CONFIG_ZSMALLOC=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 8c533cb6bb02..8b45fc5bd471 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -56,7 +56,7 @@ CONFIG_SCHED_MC=y
+ CONFIG_NR_CPUS=8
+ CONFIG_QCOM_TLB_EL2_HANDLER=y
+ CONFIG_PREEMPT=y
+-CONFIG_HZ_100=y
++CONFIG_HZ_300=y
+ CONFIG_ARM64_REG_REBALANCE_ON_CTX_SW=y
+ CONFIG_CMA=y
+ CONFIG_ZSMALLOC=y
+-- 
+2.15.0
+

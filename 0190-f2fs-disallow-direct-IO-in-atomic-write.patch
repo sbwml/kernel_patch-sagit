@@ -1,0 +1,33 @@
+From eeae9e83eac357fdc944eb62483f7d64e73e850c Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Thu, 25 Jul 2019 22:39:11 +0800
+Subject: [PATCH 190/420] f2fs: disallow direct IO in atomic write
+
+Atomic write needs page cache to cache data of transaction,
+direct IO should never be allowed in atomic write, detect
+and deny it when open atomic write file.
+
+Signed-off-by: Gao Xiang <gaoxiang25@huawei.com>
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index e533a6e04e93..161112b56a0d 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1836,6 +1836,9 @@ static int f2fs_ioc_start_atomic_write(struct file *filp)
+ 	if (!S_ISREG(inode->i_mode))
+ 		return -EINVAL;
+ 
++	if (filp->f_flags & O_DIRECT)
++		return -EINVAL;
++
+ 	ret = mnt_want_write_file(filp);
+ 	if (ret)
+ 		return ret;
+-- 
+2.15.0
+

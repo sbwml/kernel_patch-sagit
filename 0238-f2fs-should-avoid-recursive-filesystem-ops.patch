@@ -1,0 +1,36 @@
+From 9091d6a84602eb31fc60ad5939a94a4cc839bb44 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Tue, 3 Dec 2019 19:02:15 -0800
+Subject: [PATCH 238/420] f2fs: should avoid recursive filesystem ops
+
+We need to use GFP_NOFS, since we did f2fs_lock_op().
+
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 66a996df4abd..f14eabbce182 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1185,13 +1185,13 @@ static int __exchange_data_block(struct inode *src_inode,
+ 
+ 		src_blkaddr = f2fs_kvzalloc(F2FS_I_SB(src_inode),
+ 					array_size(olen, sizeof(block_t)),
+-					GFP_KERNEL);
++					GFP_NOFS);
+ 		if (!src_blkaddr)
+ 			return -ENOMEM;
+ 
+ 		do_replace = f2fs_kvzalloc(F2FS_I_SB(src_inode),
+ 					array_size(olen, sizeof(int)),
+-					GFP_KERNEL);
++					GFP_NOFS);
+ 		if (!do_replace) {
+ 			kvfree(src_blkaddr);
+ 			return -ENOMEM;
+-- 
+2.15.0
+

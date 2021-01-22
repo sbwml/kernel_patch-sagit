@@ -1,0 +1,45 @@
+From 479546a53c02a21b57523578b541436aa5f8439b Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Thu, 6 Jun 2019 18:11:45 +0200
+Subject: [PATCH 019/420] Revert "qcacld-3.0: Fix OOB in
+ wma_stats_event_handler"
+
+* This change makes WiFi report invalid signal strength.
+
+This reverts commit be468730d315e973e9936da275b06600d0ce276c.
+
+Change-Id: I01094049520ea706c27e00f316539f9d9d53bbc7
+---
+ drivers/staging/qcacld-3.0/core/wma/src/wma_utils.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/drivers/staging/qcacld-3.0/core/wma/src/wma_utils.c b/drivers/staging/qcacld-3.0/core/wma/src/wma_utils.c
+index af9459c262e0..36811c666ba3 100644
+--- a/drivers/staging/qcacld-3.0/core/wma/src/wma_utils.c
++++ b/drivers/staging/qcacld-3.0/core/wma/src/wma_utils.c
+@@ -3296,14 +3296,6 @@ int wma_stats_event_handler(void *handle, uint8_t *cmd_param_info,
+ 			buf_len += event->num_peer_stats * sizeof(*peer_stats);
+ 		}
+ 
+-		if (buf_len > param_buf->num_data) {
+-			WMA_LOGE("%s: num_data: %d Invalid num_pdev_stats:%d or num_vdev_stats:%d or num_peer_stats:%d",
+-				__func__, param_buf->num_data,
+-				event->num_pdev_stats,
+-				event->num_vdev_stats, event->num_peer_stats);
+-			return -EINVAL;
+-		}
+-
+ 		rssi_event =
+ 			(wmi_per_chain_rssi_stats *) param_buf->chain_stats;
+ 		if (rssi_event) {
+@@ -3324,6 +3316,7 @@ int wma_stats_event_handler(void *handle, uint8_t *cmd_param_info,
+ 		WMA_LOGE("excess wmi buffer: stats pdev %d vdev %d peer %d",
+ 			 event->num_pdev_stats, event->num_vdev_stats,
+ 			 event->num_peer_stats);
++		QDF_ASSERT(0);
+ 		return -EINVAL;
+ 	}
+ 
+-- 
+2.15.0
+

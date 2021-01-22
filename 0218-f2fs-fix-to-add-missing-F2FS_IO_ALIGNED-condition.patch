@@ -1,0 +1,65 @@
+From 88a7807d56b18e08da23ecbae5c609d697a95cab Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Wed, 28 Aug 2019 17:33:38 +0800
+Subject: [PATCH 218/420] f2fs: fix to add missing F2FS_IO_ALIGNED() condition
+
+In f2fs_allocate_data_block(), we will reset fio.retry for IO
+alignment feature instead of IO serialization feature.
+
+In addition, spread F2FS_IO_ALIGNED() to check IO alignment
+feature status explicitly.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c    | 6 +++++-
+ fs/f2fs/segment.c | 4 +++-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index e355351b4eca..a893c6e72cec 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -301,6 +301,9 @@ static inline void __submit_bio(struct f2fs_sb_info *sbi,
+ 		if (test_opt(sbi, LFS) && current->plug)
+ 			blk_finish_plug(current->plug);
+ 
++		if (F2FS_IO_ALIGNED(sbi))
++			goto submit_io;
++
+ 		start = bio->bi_iter.bi_size >> F2FS_BLKSIZE_BITS;
+ 		start %= F2FS_IO_SIZE(sbi);
+ 
+@@ -641,7 +644,8 @@ next:
+ 		__submit_merged_bio(io);
+ alloc_new:
+ 	if (io->bio == NULL) {
+-		if ((fio->type == DATA || fio->type == NODE) &&
++		if (F2FS_IO_ALIGNED(sbi) &&
++				(fio->type == DATA || fio->type == NODE) &&
+ 				fio->new_blkaddr & F2FS_IO_SIZE_MASK(sbi)) {
+ 			dec_page_count(sbi, WB_DATA_TYPE(bio_page));
+ 			fio->retry = true;
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index f1d11cfa9eb2..83cb5002c93f 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -3193,12 +3193,14 @@ void f2fs_allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
+ 		f2fs_inode_chksum_set(sbi, page);
+ 	}
+ 
++	if (F2FS_IO_ALIGNED(sbi))
++		fio->retry = false;
++
+ 	if (add_list) {
+ 		struct f2fs_bio_info *io;
+ 
+ 		INIT_LIST_HEAD(&fio->list);
+ 		fio->in_list = true;
+-		fio->retry = false;
+ 		io = sbi->write_io[fio->type] + fio->temp;
+ 		spin_lock(&io->io_lock);
+ 		list_add_tail(&fio->list, &io->io_list);
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From c56878f936c6af3bb6a0120d6ca82bd762d6e295 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Mon, 22 Apr 2019 06:19:44 +0800
+Subject: [PATCH 404/420] smb-lib: Change the charging current with screen on
+ (3200mA)
+
+---
+ drivers/power/supply/qcom/smb-lib.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/power/supply/qcom/smb-lib.c b/drivers/power/supply/qcom/smb-lib.c
+index 33ad68160fdd..43dab4c15545 100644
+--- a/drivers/power/supply/qcom/smb-lib.c
++++ b/drivers/power/supply/qcom/smb-lib.c
+@@ -1896,7 +1896,7 @@ int smblib_set_prop_batt_capacity(struct smb_charger *chg,
+ }
+ 
+ #ifdef CONFIG_MACH_XIAOMI_MSM8998
+-#define SCREEN_ON_ICL		1600000
++#define SCREEN_ON_ICL		3200000
+ #define SCREEN_ON_CHECK_MS	90000
+ #define SCREEN_OFF_CHECK_MS	5000
+ static void smblib_fb_state_work(struct work_struct *work)
+-- 
+2.15.0
+

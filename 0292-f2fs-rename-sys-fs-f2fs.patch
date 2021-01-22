@@ -1,0 +1,52 @@
+From 7867408ab659c75aea569c943bcaf47089ae45de Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Tue, 2 Apr 2019 14:26:17 +0900
+Subject: [PATCH 292/420] f2fs: rename /sys/fs/f2fs
+
+fsmgr and vold tries to read nodes from here and run GC by itself.
+
+Since it conflicts with rapid GC(not to mention less effective),
+rename /sys/fs/f2fs to /sys/fs/f2fs_dev to avoid Android reading it entirely.
+
+We could rename gc_urgent and dirty_segments but this approach seems better
+as it'll still be detected as a f2fs volume and try to run GC.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/f2fs/sysfs.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/sysfs.c b/fs/f2fs/sysfs.c
+index c13c3adfad81..0873b490e2e5 100644
+--- a/fs/f2fs/sysfs.c
++++ b/fs/f2fs/sysfs.c
+@@ -737,7 +737,7 @@ int __init f2fs_init_sysfs(void)
+ {
+ 	int ret;
+ 
+-	kobject_set_name(&f2fs_kset.kobj, "f2fs");
++	kobject_set_name(&f2fs_kset.kobj, "f2fs_dev");
+ 	f2fs_kset.kobj.parent = fs_kobj;
+ 	ret = kset_register(&f2fs_kset);
+ 	if (ret)
+@@ -749,7 +749,7 @@ int __init f2fs_init_sysfs(void)
+ 		kobject_put(&f2fs_feat);
+ 		kset_unregister(&f2fs_kset);
+ 	} else {
+-		f2fs_proc_root = proc_mkdir("fs/f2fs", NULL);
++		f2fs_proc_root = proc_mkdir("fs/f2fs_dev", NULL);
+ 	}
+ 	return ret;
+ }
+@@ -758,7 +758,7 @@ void f2fs_exit_sysfs(void)
+ {
+ 	kobject_put(&f2fs_feat);
+ 	kset_unregister(&f2fs_kset);
+-	remove_proc_entry("fs/f2fs", NULL);
++	remove_proc_entry("fs/f2fs_dev", NULL);
+ 	f2fs_proc_root = NULL;
+ }
+ 
+-- 
+2.15.0
+

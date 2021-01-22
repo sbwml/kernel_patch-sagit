@@ -1,0 +1,95 @@
+From 63c367d5fb0fbbec826bc76938a737abac79bb1f Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 12 Jul 2019 16:55:42 +0800
+Subject: [PATCH 183/420] f2fs: fix panic of IO alignment feature
+
+Since 07173c3ec276 ("block: enable multipage bvecs"), one bio vector
+can store multi pages, so that we can not calculate max IO size of
+bio as PAGE_SIZE * bio->bi_max_vecs. However IO alignment feature of
+f2fs always has that assumption, so finally, it may cause panic during
+IO submission as below stack.
+
+ kernel BUG at fs/f2fs/data.c:317!
+ RIP: 0010:__submit_merged_bio+0x8b0/0x8c0
+ Call Trace:
+  f2fs_submit_page_write+0x3cd/0xdd0
+  do_write_page+0x15d/0x360
+  f2fs_outplace_write_data+0xd7/0x210
+  f2fs_do_write_data_page+0x43b/0xf30
+  __write_data_page+0xcf6/0x1140
+  f2fs_write_cache_pages+0x3ba/0xb40
+  f2fs_write_data_pages+0x3dd/0x8b0
+  do_writepages+0xbb/0x1e0
+  __writeback_single_inode+0xb6/0x800
+  writeback_sb_inodes+0x441/0x910
+  wb_writeback+0x261/0x650
+  wb_workfn+0x1f9/0x7a0
+  process_one_work+0x503/0x970
+  worker_thread+0x7d/0x820
+  kthread+0x1ad/0x210
+  ret_from_fork+0x35/0x40
+
+This patch adds one extra condition to check left space in bio while
+trying merging page to bio, to avoid panic.
+
+This bug was reported in bugzilla:
+
+https://bugzilla.kernel.org/show_bug.cgi?id=204043
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c          | 10 ++++++++++
+ fs/f2fs/super.c         |  2 +-
+ include/linux/f2fs_fs.h |  1 +
+ 3 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 9af3ba531695..a7891b2d0416 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -537,6 +537,16 @@ static bool io_is_mergeable(struct f2fs_sb_info *sbi, struct bio *bio,
+ 					block_t last_blkaddr,
+ 					block_t cur_blkaddr)
+ {
++	if (F2FS_IO_ALIGNED(sbi) && (fio->type == DATA || fio->type == NODE)) {
++		unsigned int filled_blocks =
++				F2FS_BYTES_TO_BLK(bio->bi_iter.bi_size);
++		unsigned int io_size = F2FS_IO_SIZE(sbi);
++		unsigned int left_vecs = bio->bi_max_vecs - bio->bi_vcnt;
++
++		/* IOs in bio is aligned and left space of vectors is not enough */
++		if (!(filled_blocks % io_size) && left_vecs < io_size)
++			return false;
++	}
+ 	if (!page_is_mergeable(sbi, bio, last_blkaddr, cur_blkaddr))
+ 		return false;
+ 	return io_type_is_mergeable(io, fio);
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 281ec7da8128..42c3e05d10aa 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -3225,7 +3225,7 @@ try_onemore:
+ 	if (err)
+ 		goto free_bio_info;
+ 
+-	if (F2FS_IO_SIZE(sbi) > 1) {
++	if (F2FS_IO_ALIGNED(sbi)) {
+ 		sbi->write_io_dummy =
+ 			mempool_create_page_pool(2 * (F2FS_IO_SIZE(sbi) - 1), 0);
+ 		if (!sbi->write_io_dummy) {
+diff --git a/include/linux/f2fs_fs.h b/include/linux/f2fs_fs.h
+index de8f11461536..7971e105bad2 100644
+--- a/include/linux/f2fs_fs.h
++++ b/include/linux/f2fs_fs.h
+@@ -41,6 +41,7 @@
+ #define F2FS_IO_SIZE_BYTES(sbi)	(1 << (F2FS_OPTION(sbi).write_io_size_bits + 12)) /* B */
+ #define F2FS_IO_SIZE_BITS(sbi)	(F2FS_OPTION(sbi).write_io_size_bits) /* power of 2 */
+ #define F2FS_IO_SIZE_MASK(sbi)	(F2FS_IO_SIZE(sbi) - 1)
++#define F2FS_IO_ALIGNED(sbi)	(F2FS_IO_SIZE(sbi) > 1)
+ 
+ /* This flag is used by node and meta inodes, and by recovery */
+ #define GFP_F2FS_ZERO		(GFP_NOFS | __GFP_ZERO)
+-- 
+2.15.0
+

@@ -1,0 +1,37 @@
+From c1c4158130ab56ad4b939d3764f2c90b224815ff Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Tue, 15 Dec 2020 02:46:16 +0800
+Subject: [PATCH 385/420] {chiron,sagit}_defconfig: Enable CONFIG_NTFS_FS
+
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index e0c9c2777af1..b136ce486255 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -669,6 +669,7 @@ CONFIG_EXT4_FS_ENCRYPTION=y
+ CONFIG_EXT4_FS_ICE_ENCRYPTION=y
+ CONFIG_F2FS_FS=y
+ CONFIG_F2FS_FS_SECURITY=y
++CONFIG_NTFS_FS=y
+ CONFIG_QUOTA=y
+ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 7d4ace205092..031249248452 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -669,6 +669,7 @@ CONFIG_EXT4_FS_ENCRYPTION=y
+ CONFIG_EXT4_FS_ICE_ENCRYPTION=y
+ CONFIG_F2FS_FS=y
+ CONFIG_F2FS_FS_SECURITY=y
++CONFIG_NTFS_FS=y
+ CONFIG_QUOTA=y
+ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+-- 
+2.15.0
+

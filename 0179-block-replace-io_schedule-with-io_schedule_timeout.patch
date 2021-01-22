@@ -1,0 +1,60 @@
+From 4452b7b4b10cc88f8921369f31e691686f76fcb1 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@google.com>
+Date: Mon, 18 Sep 2017 14:08:00 -0700
+Subject: [PATCH 179/420] block: replace io_schedule with io_schedule_timeout
+
+Soft lockup can happen due to io_schedule().
+
+[<ffffff999fe867e4>] __switch_to+0xa0/0xac
+[<ffffff99a101e560>] __schedule+0x874/0xa50
+[<ffffff99a101dccc>] schedule+0x74/0x94
+[<ffffff99a1021c50>] schedule_timeout+0x34/0x114
+[<ffffff99a101ec2c>] io_schedule_timeout+0x70/0xac
+[<ffffff99a015f248>] get_request+0x600/0x7fc
+[<ffffff99a015ac9c>] blk_queue_bio+0x1a0/0x3cc
+[<ffffff99a015bf4c>] generic_make_request+0xb8/0x190
+[<ffffff99a015c504>] submit_bio+0x144/0x1f8
+[<ffffff99a0020914>] submit_bh_wbc+0x124/0x1b0
+[<ffffff99a001ce88>] ll_rw_block+0xc0/0x104
+[<ffffff99a001dd50>] __breadahead+0x70/0xd4
+[<ffffff99a0073ec8>] __ext4_get_inode_loc+0x2ac/0x3f4
+[<ffffff99a0075d00>] ext4_reserve_inode_write+0x38/0x9c
+[<ffffff99a00b7e64>] ext4_xattr_set_handle+0xcc/0x4f8
+[<ffffff99a00b8e04>] ext4_xattr_set+0xf0/0x170
+[<ffffff99a00bf458>] ext4_inherit_context+0xb8/0x138
+[<ffffff99a0070784>] __ext4_new_inode+0x1304/0x1514
+[<ffffff99a00808fc>] ext4_create+0x138/0x1dc
+[<ffffff999fff047c>] vfs_create2+0xc8/0x120
+[<ffffff999fff0eb4>] path_openat+0x880/0xf34
+[<ffffff999fff0584>] do_filp_open+0x7c/0x12c
+[<ffffff999ffe3b24>] do_sys_open+0x144/0x200
+[<ffffff99a0039b28>] compat_SyS_openat+0xc/0x14
+[<ffffff999fe8390c>] __sys_trace_return+0x0/0x4
+
+Bug: 65386843
+Change-Id: Ia519604eaeab2c53ad89eacb25cd3cd7d5f2efd7
+Signed-off-by: Jaegeuk Kim <jaegeuk@google.com>
+---
+ block/blk-core.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 0c619b9459a8..d56e227539cc 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -1263,7 +1263,11 @@ retry:
+ 	trace_block_sleeprq(q, bio, rw_flags & 1);
+ 
+ 	spin_unlock_irq(q->queue_lock);
+-	io_schedule();
++	/*
++	 * FIXME: this should be io_schedule().  The timeout is there as a
++	 * workaround for some io timeout problems.
++	 */
++	io_schedule_timeout(5*HZ);
+ 
+ 	/*
+ 	 * After sleeping, we become a "batching" process and will be able
+-- 
+2.15.0
+

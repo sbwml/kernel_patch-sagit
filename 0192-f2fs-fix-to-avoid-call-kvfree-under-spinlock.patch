@@ -1,0 +1,43 @@
+From fab4f7bec4bd2cabe6641624a8b779cb613f1857 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 26 Jul 2019 15:43:17 +0800
+Subject: [PATCH 192/420] f2fs: fix to avoid call kvfree under spinlock
+
+vfree() don't wish to be called from interrupt context, move it
+out of spin_lock_irqsave() coverage.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index ae98cdf21f55..4f68f1cd6dd6 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1702,6 +1702,7 @@ static inline void clear_ckpt_flags(struct f2fs_sb_info *sbi, unsigned int f)
+ static inline void disable_nat_bits(struct f2fs_sb_info *sbi, bool lock)
+ {
+ 	unsigned long flags;
++	unsigned char *nat_bits;
+ 
+ 	/*
+ 	 * In order to re-enable nat_bits we need to call fsck.f2fs by
+@@ -1712,10 +1713,12 @@ static inline void disable_nat_bits(struct f2fs_sb_info *sbi, bool lock)
+ 	if (lock)
+ 		spin_lock_irqsave(&sbi->cp_lock, flags);
+ 	__clear_ckpt_flags(F2FS_CKPT(sbi), CP_NAT_BITS_FLAG);
+-	kvfree(NM_I(sbi)->nat_bits);
++	nat_bits = NM_I(sbi)->nat_bits;
+ 	NM_I(sbi)->nat_bits = NULL;
+ 	if (lock)
+ 		spin_unlock_irqrestore(&sbi->cp_lock, flags);
++
++	kvfree(nat_bits);
+ }
+ 
+ static inline bool enabled_nat_bits(struct f2fs_sb_info *sbi,
+-- 
+2.15.0
+

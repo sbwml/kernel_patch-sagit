@@ -1,0 +1,39 @@
+From 9325a7526c518a2338e4042552a24c3b03045ad7 Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Mon, 24 Dec 2018 06:55:20 +0900
+Subject: [PATCH 118/420] msm_thermal: initialize later than arch drivers
+
+If OSM driver is initialized later than msm_thermal, it will fail:
+
+[    0.226183] cpu cpu0: dev_pm_opp_get_opp_count: OPP table not found (-19)
+[    0.227931] msm_thermal:get_cpu_freq_plan_len Error reading CPU0 freq table len. error:-19
+[    0.227955] cpu cpu4: dev_pm_opp_get_opp_count: OPP table not found (-19)
+[    0.229631] msm_thermal:get_cpu_freq_plan_len Error reading CPU4 freq table len. error:-19
+[    0.229652] cpu cpu0: dev_pm_opp_get_opp_count: OPP table not found (-19)
+[    0.231380] msm_thermal:get_cpu_freq_plan_len Error reading CPU0 freq table len. error:-19
+[    0.231404] cpu cpu4: dev_pm_opp_get_opp_count: OPP table not found (-19)
+[    0.233095] msm_thermal:get_cpu_freq_plan_len Error reading CPU4 freq table len. error:-19
+
+Change-Id: I98be9d37701f1f9366cef1427cfdd9082b8fb24c
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: celtare21 <celtare21@gmail.com>
+---
+ drivers/thermal/msm_thermal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/thermal/msm_thermal.c b/drivers/thermal/msm_thermal.c
+index ade4eba1c9cd..cc2f00b2c3d0 100644
+--- a/drivers/thermal/msm_thermal.c
++++ b/drivers/thermal/msm_thermal.c
+@@ -7583,7 +7583,7 @@ int __init msm_thermal_device_init(void)
+ {
+ 	return platform_driver_register(&msm_thermal_device_driver);
+ }
+-arch_initcall(msm_thermal_device_init);
++subsys_initcall(msm_thermal_device_init);
+ 
+ int __init msm_thermal_late_init(void)
+ {
+-- 
+2.15.0
+

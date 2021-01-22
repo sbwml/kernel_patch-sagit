@@ -1,0 +1,38 @@
+From 822c800943e272436f6853c43360b47ce8917a13 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Wed, 27 May 2020 18:27:51 +0800
+Subject: [PATCH 282/420] f2fs: fix wrong value of tracepoint parameter
+
+In f2fs_lookup(), we should set @err correctly before printing it
+in tracepoint.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/namei.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 25dcc14afe61..b6f6486e86f5 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -452,6 +452,7 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+ 			err = PTR_ERR(page);
+ 			goto out;
+ 		}
++		err = -ENOENT;
+ 		goto out_splice;
+ 	}
+ 
+@@ -487,7 +488,7 @@ out_splice:
+ 	new = d_splice_alias(inode, dentry);
+ 	if (IS_ERR(new))
+ 		err = PTR_ERR(new);
+-	trace_f2fs_lookup_end(dir, dentry, ino, err);
++	trace_f2fs_lookup_end(dir, dentry, ino, !new ? -ENOENT : err);
+ 	return new;
+ out_iput:
+ 	iput(inode);
+-- 
+2.15.0
+

@@ -1,0 +1,33 @@
+From ac6c776841a50c5aac7c728b6a11dcfae3b8900e Mon Sep 17 00:00:00 2001
+From: Chris Fries <cfries@google.com>
+Date: Tue, 7 Mar 2017 15:37:47 -0600
+Subject: [PATCH 120/420] posix_cpu_timer: check return on
+ cpu_timer_sample_group
+
+If error, don't trust "now" time that it should be setting
+
+kernel/time/posix-cpu-timers.c:1269:13: warning: 'now' may be used uninitialized in this function [-Wmaybe-uninitialized]
+
+Change-Id: I679d99c335494bae50fd926663fad37aedb1487a
+Signed-off-by: Chris Fries <cfries@google.com>
+---
+ kernel/time/posix-cpu-timers.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/time/posix-cpu-timers.c b/kernel/time/posix-cpu-timers.c
+index d176c127f744..0a4f0c09bcbf 100644
+--- a/kernel/time/posix-cpu-timers.c
++++ b/kernel/time/posix-cpu-timers.c
+@@ -1253,7 +1253,8 @@ void set_process_cpu_timer(struct task_struct *tsk, unsigned int clock_idx,
+ 	unsigned long long now = 0;
+ 
+ 	WARN_ON_ONCE(clock_idx == CPUCLOCK_SCHED);
+-	cpu_timer_sample_group(clock_idx, tsk, &now);
++	if (cpu_timer_sample_group(clock_idx, tsk, &now))
++		return;
+ 
+ 	if (oldval) {
+ 		/*
+-- 
+2.15.0
+

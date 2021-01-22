@@ -1,0 +1,215 @@
+From b91c9d7998274e2e2dcb386947baf65506fb6561 Mon Sep 17 00:00:00 2001
+From: Marco Ballesio <balejs@google.com>
+Date: Tue, 3 Nov 2020 07:15:07 +0800
+Subject: [PATCH 417/420] kernel: Optionally killable freezer
+
+Adds a configurable option to allow killing frozen tasks in a way
+similar to cgroups v2. The status of frozen tasks is changed to
+TASK_INTERRUPTIBLE and their PF_FROZEN flag is reset on pending fatal
+signals.
+
+This behavior is enabled via a run-time configurable option, so that
+the pre-existing behavior is preserved by default.
+
+Change-Id: Ic86a2c2652ab4b374cd636faf48bc55065858b3f
+Bug: b/143308662
+Test: manual
+Signed-off-by: Marco Ballesio <balejs@google.com>
+---
+ Documentation/cgroup-legacy/freezer-subsystem.txt | 12 ++++
+ include/linux/freezer.h                           |  1 +
+ kernel/cgroup_freezer.c                           | 69 ++++++++++++++++++++++-
+ kernel/freezer.c                                  | 20 ++++++-
+ 4 files changed, 98 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/cgroup-legacy/freezer-subsystem.txt b/Documentation/cgroup-legacy/freezer-subsystem.txt
+index e831cb2b8394..22958ef93cd9 100644
+--- a/Documentation/cgroup-legacy/freezer-subsystem.txt
++++ b/Documentation/cgroup-legacy/freezer-subsystem.txt
+@@ -90,6 +90,18 @@ The following cgroupfs files are created by cgroup freezer.
+   Shows the parent-state.  0 if none of the cgroup's ancestors is
+   frozen; otherwise, 1.
+ 
++* freezer.killable: Read-write
++
++  When read, returns the killable state of a cgroup - "1" if frozen
++  tasks will respond to fatal signals, or "0" if they won't.
++
++  When written, this property sets the killable state of the cgroup.
++  A value equal to "1" will switch the state of all frozen tasks in
++  the cgroup to TASK_INTERRUPTIBLE (similarly to cgroup v2) and will
++  make them react to fatal signals. A value of "0" will switch the
++  state of frozen tasks to TASK_UNINTERRUPTIBLE and they won't respond
++  to signals unless thawed or unfrozen.
++
+ The root cgroup is non-freezable and the above interface files don't
+ exist.
+ 
+diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+index dd03e837ebb7..5e9616843874 100644
+--- a/include/linux/freezer.h
++++ b/include/linux/freezer.h
+@@ -71,6 +71,7 @@ extern bool set_freezable(void);
+ 
+ #ifdef CONFIG_CGROUP_FREEZER
+ extern bool cgroup_freezing(struct task_struct *task);
++extern bool cgroup_freezer_killable(struct task_struct *task);
+ #else /* !CONFIG_CGROUP_FREEZER */
+ static inline bool cgroup_freezing(struct task_struct *task)
+ {
+diff --git a/kernel/cgroup_freezer.c b/kernel/cgroup_freezer.c
+index 2d3df82c54f2..ace071ff0c2b 100644
+--- a/kernel/cgroup_freezer.c
++++ b/kernel/cgroup_freezer.c
+@@ -35,6 +35,7 @@ enum freezer_state_flags {
+ 	CGROUP_FREEZING_SELF	= (1 << 1), /* this freezer is freezing */
+ 	CGROUP_FREEZING_PARENT	= (1 << 2), /* the parent freezer is freezing */
+ 	CGROUP_FROZEN		= (1 << 3), /* this and its descendants frozen */
++	CGROUP_FREEZER_KILLABLE = (1 << 4), /* frozen pocesses can be killed */
+ 
+ 	/* mask for all FREEZING flags */
+ 	CGROUP_FREEZING		= CGROUP_FREEZING_SELF | CGROUP_FREEZING_PARENT,
+@@ -73,6 +74,17 @@ bool cgroup_freezing(struct task_struct *task)
+ 	return ret;
+ }
+ 
++bool cgroup_freezer_killable(struct task_struct *task)
++{
++	bool ret;
++
++	rcu_read_lock();
++	ret = task_freezer(task)->state & CGROUP_FREEZER_KILLABLE;
++	rcu_read_unlock();
++
++	return ret;
++}
++
+ static const char *freezer_state_strs(unsigned int state)
+ {
+ 	if (state & CGROUP_FROZEN)
+@@ -111,9 +123,15 @@ static int freezer_css_online(struct cgroup_subsys_state *css)
+ 
+ 	freezer->state |= CGROUP_FREEZER_ONLINE;
+ 
+-	if (parent && (parent->state & CGROUP_FREEZING)) {
+-		freezer->state |= CGROUP_FREEZING_PARENT | CGROUP_FROZEN;
+-		atomic_inc(&system_freezing_cnt);
++	if (parent) {
++		if (parent->state & CGROUP_FREEZER_KILLABLE)
++			freezer->state |= CGROUP_FREEZER_KILLABLE;
++
++		if (parent->state & CGROUP_FREEZING) {
++			freezer->state |= CGROUP_FREEZING_PARENT |
++					CGROUP_FROZEN;
++			atomic_inc(&system_freezing_cnt);
++		}
+ 	}
+ 
+ 	mutex_unlock(&freezer_mutex);
+@@ -450,6 +468,45 @@ static u64 freezer_parent_freezing_read(struct cgroup_subsys_state *css,
+ 	return (bool)(freezer->state & CGROUP_FREEZING_PARENT);
+ }
+ 
++static u64 freezer_killable_read(struct cgroup_subsys_state *css,
++				     struct cftype *cft)
++{
++	struct freezer *freezer = css_freezer(css);
++
++	return (bool)(freezer->state & CGROUP_FREEZER_KILLABLE);
++}
++
++static int freezer_killable_write(struct cgroup_subsys_state *css,
++				      struct cftype *cft, u64 val)
++{
++	struct freezer *freezer = css_freezer(css);
++
++	if (val > 1)
++		return -EINVAL;
++
++	mutex_lock(&freezer_mutex);
++
++	if (val == !!(freezer->state & CGROUP_FREEZER_KILLABLE))
++		goto out;
++
++	if (val)
++		freezer->state |= CGROUP_FREEZER_KILLABLE;
++	else
++		freezer->state &= ~CGROUP_FREEZER_KILLABLE;
++
++
++	/*
++	 * Let __refrigerator spin once for each task to set it into the
++	 * appropriate state.
++	 */
++	unfreeze_cgroup(freezer);
++
++out:
++	mutex_unlock(&freezer_mutex);
++
++	return 0;
++}
++
+ static struct cftype files[] = {
+ 	{
+ 		.name = "state",
+@@ -467,6 +524,12 @@ static struct cftype files[] = {
+ 		.flags = CFTYPE_NOT_ON_ROOT,
+ 		.read_u64 = freezer_parent_freezing_read,
+ 	},
++	{
++		.name = "killable",
++		.flags = CFTYPE_NOT_ON_ROOT,
++		.write_u64 = freezer_killable_write,
++		.read_u64 = freezer_killable_read,
++	},
+ 	{ }	/* terminate */
+ };
+ 
+diff --git a/kernel/freezer.c b/kernel/freezer.c
+index a8900a3bc27a..699f68e98e7c 100644
+--- a/kernel/freezer.c
++++ b/kernel/freezer.c
+@@ -45,6 +45,9 @@ bool freezing_slow_path(struct task_struct *p)
+ 	if (test_thread_flag(TIF_MEMDIE))
+ 		return false;
+ 
++	if (cgroup_freezer_killable(p) && fatal_signal_pending(p))
++		return false;
++
+ 	if (pm_nosig_freezing || cgroup_freezing(p))
+ 		return true;
+ 
+@@ -66,7 +69,12 @@ bool __refrigerator(bool check_kthr_stop)
+ 	pr_debug("%s entered refrigerator\n", current->comm);
+ 
+ 	for (;;) {
+-		set_current_state(TASK_UNINTERRUPTIBLE);
++		bool killable = cgroup_freezer_killable(current);
++
++		if (killable)
++			set_current_state(TASK_INTERRUPTIBLE);
++		else
++			set_current_state(TASK_UNINTERRUPTIBLE);
+ 
+ 		spin_lock_irq(&freezer_lock);
+ 		current->flags |= PF_FROZEN;
+@@ -78,6 +86,16 @@ bool __refrigerator(bool check_kthr_stop)
+ 		if (!(current->flags & PF_FROZEN))
+ 			break;
+ 		was_frozen = true;
++
++		/*
++		 * Now we're sure that there is no pending fatal signal.
++		 * Clear TIF_SIGPENDING to not get out of schedule()
++		 * immediately (if there is a non-fatal signal pending), and
++		 * put the task into sleep.
++		 */
++		if (killable)
++			clear_thread_flag(TIF_SIGPENDING);
++
+ 		schedule();
+ 	}
+ 
+-- 
+2.15.0
+

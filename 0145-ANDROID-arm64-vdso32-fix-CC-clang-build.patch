@@ -1,0 +1,43 @@
+From a04bac4d7e870c060b4f98c4b110643762a32266 Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Tue, 9 Jan 2018 16:55:17 -0800
+Subject: [PATCH 145/420] ANDROID: arm64: vdso32: fix CC=clang build
+
+clang build had wrong --gcc-toolchain for cross compiler.
+
+Signed-off-by: Mark Salyzyn <salyzyn@google.com>
+Bug: 63737556
+Change-Id: Ib0c3bbb250943a0309da021ba5335a8320b584f4
+---
+ arch/arm64/kernel/vdso32/Makefile | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/kernel/vdso32/Makefile b/arch/arm64/kernel/vdso32/Makefile
+index 6d44d972e89d..e9ca1f97a543 100644
+--- a/arch/arm64/kernel/vdso32/Makefile
++++ b/arch/arm64/kernel/vdso32/Makefile
+@@ -6,6 +6,10 @@
+ 
+ ifeq ($(cc-name),clang)
+   CC_ARM32 := $(cc-name) $(CLANG_TARGET_ARM32) -no-integrated-as
++  GCC_ARM32_TC := $(realpath $(dir $(shell which $(CROSS_COMPILE_ARM32)ld))/..)
++ifneq ($(GCC_ARM32_TC),)
++  CC_ARM32 += --gcc-toolchain=$(GCC_ARM32_TC)
++endif
+ else
+   CC_ARM32 := $(CROSS_COMPILE_ARM32)$(cc-name)
+ endif
+@@ -29,7 +33,9 @@ cc32-ldoption = $(call try-run,\
+ # NOSTDINC_FLAGS
+ VDSO_CPPFLAGS := -nostdinc -isystem $(shell $(CC_ARM32) -print-file-name=include)
+ VDSO_CPPFLAGS += $(LINUXINCLUDE)
+-VDSO_CPPFLAGS += $(KBUILD_CPPFLAGS)
++VDSO_CPPFLAGS += -D__KERNEL__
++VDSO_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
++VDSO_CPPFLAGS += $(ARCH_CPPFLAGS) $(KCPPFLAGS)
+ 
+ # Common C and assembly flags
+ # From top-level Makefile
+-- 
+2.15.0
+

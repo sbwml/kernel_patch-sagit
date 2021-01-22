@@ -1,0 +1,36 @@
+From 5f9f582624d7a83ae21dec1e76b89d282ffbda9a Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 21:41:59 -0700
+Subject: [PATCH 034/420] msm: mdss: fix inconsistent mutex_lock
+
+drivers/video/fbdev/msm/mdss_mdp_splash_logo.c:480
+mdss_mdp_splash_kickoff() warn: inconsistent returns
+'mutex:&mdp5_data->ov_lock'
+
+Change-Id: I3e97f80ff562bb0b260adeff733e78af1a8f1e67
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/video/fbdev/msm/mdss_mdp_splash_logo.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/video/fbdev/msm/mdss_mdp_splash_logo.c b/drivers/video/fbdev/msm/mdss_mdp_splash_logo.c
+index b55a6824ffc1..b085bd21bee2 100644
+--- a/drivers/video/fbdev/msm/mdss_mdp_splash_logo.c
++++ b/drivers/video/fbdev/msm/mdss_mdp_splash_logo.c
+@@ -418,8 +418,11 @@ static int mdss_mdp_splash_kickoff(struct msm_fb_data_type *mfd,
+ 	}
+ 
+ 	req = kzalloc(sizeof(struct mdp_overlay), GFP_KERNEL);
+-	if (!req)
+-		return -ENOMEM;
++	if (!req) {
++		pr_err("fail allocate memory\n");
++		ret = -ENOMEM;
++		goto end;
++	}
+ 
+ 	/*
+ 	 * use single pipe for
+-- 
+2.15.0
+

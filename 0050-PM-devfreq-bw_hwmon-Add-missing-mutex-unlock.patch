@@ -1,0 +1,28 @@
+From f084c49e5961fdb02a93854ff73425c61d175bf6 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Mon, 4 Mar 2019 19:47:39 +0200
+Subject: [PATCH 050/420] PM / devfreq: bw_hwmon: Add missing mutex unlock
+
+Fixes 28aab0311cfcd9b279f41f2f4da0085a660d5ed5
+"PM/devfreq: bw_hwmon: add mutex lock in polling interval case"
+
+Change-Id: I84ccefedbc9d9c0d25806799451346b6a46bae90
+---
+ drivers/devfreq/governor_bw_hwmon.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/devfreq/governor_bw_hwmon.c b/drivers/devfreq/governor_bw_hwmon.c
+index c379d2ffe6c0..93a820315389 100644
+--- a/drivers/devfreq/governor_bw_hwmon.c
++++ b/drivers/devfreq/governor_bw_hwmon.c
+@@ -866,6 +866,7 @@ static int devfreq_bw_hwmon_ev_handler(struct devfreq *df,
+ 		if (ret) {
+ 			dev_err(df->dev.parent,
+ 				"Unable to resume HW monitor (%d)\n", ret);
++			mutex_unlock(&sync_lock);
+ 			return ret;
+ 		}
+ 		mutex_unlock(&sync_lock);
+-- 
+2.15.0
+

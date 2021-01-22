@@ -1,0 +1,38 @@
+From e11f407b9e8607ccfa03a1c14ab618e0a4f5d793 Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Wed, 31 Oct 2018 11:57:41 +0000
+Subject: [PATCH 367/420] {chiron,sagit}_defconfig: preserve memory on restart
+
+Change-Id: I34e38bb4ab456d9573b5b5d2bba4bb6e42cd4c85
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index faa313c3e9a5..148af955aae2 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -387,6 +387,7 @@ CONFIG_GPIOLIB=y
+ CONFIG_GPIO_SYSFS=y
+ CONFIG_GPIO_QPNP_PIN=y
+ CONFIG_POWER_RESET_QCOM=y
++CONFIG_QCOM_PRESERVE_MEM=y
+ CONFIG_POWER_RESET_XGENE=y
+ CONFIG_POWER_RESET_SYSCON=y
+ CONFIG_QPNP_FG_GEN3=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 9703d774690a..f0a99ca3263d 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -387,6 +387,7 @@ CONFIG_GPIOLIB=y
+ CONFIG_GPIO_SYSFS=y
+ CONFIG_GPIO_QPNP_PIN=y
+ CONFIG_POWER_RESET_QCOM=y
++CONFIG_QCOM_PRESERVE_MEM=y
+ CONFIG_POWER_RESET_XGENE=y
+ CONFIG_POWER_RESET_SYSCON=y
+ CONFIG_QPNP_FG_GEN3=y
+-- 
+2.15.0
+

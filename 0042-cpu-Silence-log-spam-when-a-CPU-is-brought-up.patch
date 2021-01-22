@@ -1,0 +1,55 @@
+From 352959ee20408ba82d5dd0567c0018b236616c46 Mon Sep 17 00:00:00 2001
+From: Sultanxda <sultanxda@gmail.com>
+Date: Tue, 2 Jan 2018 19:19:14 -0800
+Subject: [PATCH 042/420] cpu: Silence log spam when a CPU is brought up
+
+Change-Id: Ib9bc76270fedb8d620714faf45de58d5ecdcd64e
+Signed-off-by: Sultanxda <sultanxda@gmail.com>
+---
+ arch/arm64/kernel/smp.c      | 2 +-
+ arch/arm64/kernel/topology.c | 2 +-
+ kernel/cpu.c                 | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/kernel/smp.c b/arch/arm64/kernel/smp.c
+index eb492cfa30ce..3b8ecc930caa 100644
+--- a/arch/arm64/kernel/smp.c
++++ b/arch/arm64/kernel/smp.c
+@@ -197,7 +197,7 @@ asmlinkage notrace void secondary_start_kernel(void)
+ 	 * the CPU migration code to notice that the CPU is online
+ 	 * before we continue.
+ 	 */
+-	pr_info("CPU%u: Booted secondary processor [%08x]\n",
++	pr_debug("CPU%u: Booted secondary processor [%08x]\n",
+ 					 cpu, read_cpuid_id());
+ 	set_cpu_online(cpu, true);
+ 	complete(&cpu_running);
+diff --git a/arch/arm64/kernel/topology.c b/arch/arm64/kernel/topology.c
+index db0087fd9823..d0e5fe5fbf22 100644
+--- a/arch/arm64/kernel/topology.c
++++ b/arch/arm64/kernel/topology.c
+@@ -451,7 +451,7 @@ static void update_cpu_capacity(unsigned int cpu)
+ 
+ 	set_capacity_scale(cpu, capacity);
+ 
+-	pr_info("CPU%d: update cpu_capacity %lu\n",
++	pr_debug("CPU%d: update cpu_capacity %lu\n",
+ 		cpu, arch_scale_cpu_capacity(NULL, cpu));
+ }
+ 
+diff --git a/kernel/cpu.c b/kernel/cpu.c
+index 98791b70277a..de267a034b56 100644
+--- a/kernel/cpu.c
++++ b/kernel/cpu.c
+@@ -707,7 +707,7 @@ void enable_nonboot_cpus(void)
+ 		error = _cpu_up(cpu, 1);
+ 		trace_suspend_resume(TPS("CPU_ON"), cpu, false);
+ 		if (!error) {
+-			pr_info("CPU%d is up\n", cpu);
++			pr_debug("CPU%d is up\n", cpu);
+ 			cpu_device = get_cpu_device(cpu);
+ 			if (!cpu_device)
+ 				pr_err("%s: failed to get cpu%d device\n",
+-- 
+2.15.0
+

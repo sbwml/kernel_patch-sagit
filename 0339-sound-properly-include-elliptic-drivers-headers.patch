@@ -1,0 +1,65 @@
+From 4363e0fb0e4625292bc32227bf38c253efc89d42 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Mon, 12 Mar 2018 08:32:46 +0000
+Subject: [PATCH 339/420] sound: properly include elliptic drivers headers
+
+Change-Id: I6d6b14e9bf1fc50ff74ca167ff36b42f4e5a253b
+---
+ sound/soc/msm/qdsp6v2/Makefile       | 3 +--
+ sound/soc/msm/qdsp6v2/apr_elliptic.c | 4 ++--
+ sound/soc/msm/qdsp6v2/msm-elliptic.c | 6 +++---
+ 3 files changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/sound/soc/msm/qdsp6v2/Makefile b/sound/soc/msm/qdsp6v2/Makefile
+index 48da171764c3..c217775e1c58 100644
+--- a/sound/soc/msm/qdsp6v2/Makefile
++++ b/sound/soc/msm/qdsp6v2/Makefile
+@@ -13,6 +13,7 @@ obj-$(CONFIG_SND_SOC_QDSP6V2_VM) += snd-soc-qdsp6v2.o msm-pcm-dtmf-v2.o \
+ 				 msm-dai-stub-v2.o
+ 
+ obj-$(CONFIG_MACH_XIAOMI_MSM8998) += msm-elliptic.o apr_elliptic.o
++ccflags-$(CONFIG_MACH_XIAOMI_MSM8998) += -I$(srctree)/drivers/elliptic
+ 
+ obj-$(CONFIG_SND_HWDEP) += msm-pcm-routing-devdep.o
+ obj-$(CONFIG_DOLBY_DAP) += msm-dolby-dap-config.o
+@@ -25,5 +26,3 @@ obj-y += audio_calibration.o audio_cal_utils.o q6adm.o q6afe.o q6asm.o \
+ 	msm-pcm-q6-noirq.o q6common.o
+ ocmem-audio-objs += audio_ocmem.o
+ obj-$(CONFIG_AUDIO_OCMEM) += ocmem-audio.o
+-
+-EXTRA_CFLAGS += -I$(srctree)
+diff --git a/sound/soc/msm/qdsp6v2/apr_elliptic.c b/sound/soc/msm/qdsp6v2/apr_elliptic.c
+index 795fa2f460a2..4f097d673ab9 100644
+--- a/sound/soc/msm/qdsp6v2/apr_elliptic.c
++++ b/sound/soc/msm/qdsp6v2/apr_elliptic.c
+@@ -15,8 +15,8 @@
+ #include <sound/apr_elliptic.h>
+ #include "msm-elliptic.h"
+ 
+-#include <drivers/elliptic/elliptic_data_io.h>
+-#include <drivers/elliptic/elliptic_mixer_controls.h>
++#include <elliptic_data_io.h>
++#include <elliptic_mixer_controls.h>
+ 
+ 
+ #ifndef min
+diff --git a/sound/soc/msm/qdsp6v2/msm-elliptic.c b/sound/soc/msm/qdsp6v2/msm-elliptic.c
+index 27f23da8b5dd..2c19cad60b87 100644
+--- a/sound/soc/msm/qdsp6v2/msm-elliptic.c
++++ b/sound/soc/msm/qdsp6v2/msm-elliptic.c
+@@ -13,9 +13,9 @@
+ #include <sound/apr_audio-v2.h>
+ #include "msm-elliptic.h"
+ 
+-#include <drivers/elliptic/elliptic_data_io.h>
+-#include <drivers/elliptic/elliptic_device.h>
+-#include <drivers/elliptic/elliptic_mixer_controls.h>
++#include <elliptic_data_io.h>
++#include <elliptic_device.h>
++#include <elliptic_mixer_controls.h>
+ 
+ struct elliptic_system_configuration {
+ 	union {
+-- 
+2.15.0
+

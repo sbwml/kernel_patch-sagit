@@ -1,0 +1,263 @@
+From 67729dde0f84faa3aa23fb970e419a896f358c6d Mon Sep 17 00:00:00 2001
+From: Tom Marshall <tdm.code@gmail.com>
+Date: Wed, 25 Jan 2017 18:01:03 +0100
+Subject: [PATCH 099/420] kernel: Only expose su when daemon is running
+
+It has been claimed that the PG implementation of 'su' has security
+vulnerabilities even when disabled.  Unfortunately, the people that
+find these vulnerabilities often like to keep them private so they
+can profit from exploits while leaving users exposed to malicious
+hackers.
+
+In order to reduce the attack surface for vulnerabilites, it is
+therefore necessary to make 'su' completely inaccessible when it
+is not in use (except by the root and system users).
+
+Change-Id: I79716c72f74d0b7af34ec3a8054896c6559a181d
+---
+ fs/exec.c              |  5 +++++
+ fs/namei.c             |  9 +++++++++
+ fs/readdir.c           | 15 +++++++++++++++
+ include/linux/dcache.h |  6 ++++++
+ include/linux/fs.h     |  1 +
+ include/linux/sched.h  |  8 ++++++++
+ include/linux/uidgid.h |  3 +++
+ kernel/exit.c          |  4 ++++
+ kernel/fork.c          |  3 +++
+ kernel/sched/core.c    | 32 ++++++++++++++++++++++++++++++++
+ 10 files changed, 86 insertions(+)
+
+diff --git a/fs/exec.c b/fs/exec.c
+index eba40240c0c5..e0b274c098cf 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -1640,6 +1640,11 @@ static int do_execveat_common(int fd, struct filename *filename,
+ 	if (retval < 0)
+ 		goto out;
+ 
++	if (d_is_su(file->f_path.dentry) && capable(CAP_SYS_ADMIN)) {
++		current->flags |= PF_SU;
++		su_exec();
++	}
++
+ 	/* execve succeeded */
+ 	current->fs->in_exec = 0;
+ 	current->in_execve = 0;
+diff --git a/fs/namei.c b/fs/namei.c
+index f93a238ad4f9..89a1b1a723cf 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2290,6 +2290,15 @@ static int path_lookupat(struct nameidata *nd, unsigned flags, struct path *path
+ 	if (!err && nd->flags & LOOKUP_DIRECTORY)
+ 		if (!d_can_lookup(nd->path.dentry))
+ 			err = -ENOTDIR;
++
++	if (!err) {
++		struct super_block *sb = nd->inode->i_sb;
++		if (sb->s_flags & MS_RDONLY) {
++			if (d_is_su(nd->path.dentry) && !su_visible())
++				err = -ENOENT;
++		}
++	}
++
+ 	if (!err) {
+ 		*path = nd->path;
+ 		nd->path.mnt = NULL;
+diff --git a/fs/readdir.c b/fs/readdir.c
+index ced679179cac..91918f79e1db 100644
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -39,6 +39,7 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
+ 	res = -ENOENT;
+ 	if (!IS_DEADDIR(inode)) {
+ 		ctx->pos = file->f_pos;
++		ctx->romnt = (inode->i_sb->s_flags & MS_RDONLY);
+ 		res = file->f_op->iterate(file, ctx);
+ 		file->f_pos = ctx->pos;
+ 		fsnotify_access(file);
+@@ -50,6 +51,14 @@ out:
+ }
+ EXPORT_SYMBOL(iterate_dir);
+ 
++static bool hide_name(const char *name, int namlen)
++{
++	if (namlen == 2 && !memcmp(name, "su", 2))
++		if (!su_visible())
++			return true;
++	return false;
++}
++
+ /*
+  * Traditional linux readdir() handling..
+  *
+@@ -89,6 +98,8 @@ static int fillonedir(struct dir_context *ctx, const char *name, int namlen,
+ 		buf->result = -EOVERFLOW;
+ 		return -EOVERFLOW;
+ 	}
++	if (hide_name(name, namlen) && buf->ctx.romnt)
++		return 0;
+ 	buf->result++;
+ 	dirent = buf->dirent;
+ 	if (!access_ok(VERIFY_WRITE, dirent,
+@@ -167,6 +178,8 @@ static int filldir(struct dir_context *ctx, const char *name, int namlen,
+ 		buf->error = -EOVERFLOW;
+ 		return -EOVERFLOW;
+ 	}
++	if (hide_name(name, namlen) && buf->ctx.romnt)
++		return 0;
+ 	dirent = buf->previous;
+ 	if (dirent) {
+ 		if (__put_user(offset, &dirent->d_off))
+@@ -246,6 +259,8 @@ static int filldir64(struct dir_context *ctx, const char *name, int namlen,
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
++	if (hide_name(name, namlen) && buf->ctx.romnt)
++		return 0;
+ 	dirent = buf->previous;
+ 	if (dirent) {
+ 		if (__put_user(offset, &dirent->d_off))
+diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+index c066f6b56e58..d57e8a6c2f2c 100644
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -522,6 +522,12 @@ static inline bool d_is_fallthru(const struct dentry *dentry)
+ 	return dentry->d_flags & DCACHE_FALLTHRU;
+ }
+ 
++static inline bool d_is_su(const struct dentry *dentry)
++{
++	return dentry &&
++	       dentry->d_name.len == 2 &&
++	       !memcmp(dentry->d_name.name, "su", 2);
++}
+ 
+ extern int sysctl_vfs_cache_pressure;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 66360a2f97bc..c0d214607fb4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1658,6 +1658,7 @@ typedef int (*filldir_t)(struct dir_context *, const char *, int, loff_t, u64,
+ struct dir_context {
+ 	const filldir_t actor;
+ 	loff_t pos;
++	bool romnt;
+ };
+ 
+ struct block_device_operations;
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index a05e1e82ecf3..8c9967e48ad5 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -63,6 +63,12 @@ struct sched_param {
+ 
+ #include <asm/processor.h>
+ 
++int  su_instances(void);
++bool su_running(void);
++bool su_visible(void);
++void su_exec(void);
++void su_exit(void);
++
+ #define SCHED_ATTR_SIZE_VER0	48	/* sizeof first published struct */
+ 
+ /*
+@@ -2406,6 +2412,8 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
+ #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezable */
+ #define PF_SUSPEND_TASK 0x80000000      /* this thread called freeze_processes and should not be frozen */
+ 
++#define PF_SU		0x10000000      /* task is su */
++
+ /*
+  * Only the _current_ task can read/write to tsk->flags, but other
+  * tasks can access tsk->flags in readonly mode for example
+diff --git a/include/linux/uidgid.h b/include/linux/uidgid.h
+index 03835522dfcb..83504b1be16e 100644
+--- a/include/linux/uidgid.h
++++ b/include/linux/uidgid.h
+@@ -54,6 +54,9 @@ static inline gid_t __kgid_val(kgid_t gid)
+ #define GLOBAL_ROOT_UID KUIDT_INIT(0)
+ #define GLOBAL_ROOT_GID KGIDT_INIT(0)
+ 
++#define GLOBAL_SYSTEM_UID KUIDT_INIT(1000)
++#define GLOBAL_SYSTEM_GID KGIDT_INIT(1000)
++
+ #define INVALID_UID KUIDT_INIT(-1)
+ #define INVALID_GID KGIDT_INIT(-1)
+ 
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 8e288e8e9ca3..0dd392dd94e9 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -725,6 +725,10 @@ void do_exit(long code)
+ 	sched_exit(tsk);
+ 	schedtune_exit_task(tsk);
+ 
++	if (tsk->flags & PF_SU) {
++		su_exit();
++	}
++
+ 	/*
+ 	 * tsk->flags are checked in the futex code to protect against
+ 	 * an exiting task cleaning up the robust pi futexes.
+diff --git a/kernel/fork.c b/kernel/fork.c
+index 58514ce46152..5d3cab4c20fa 100644
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -365,6 +365,9 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
+ 	err = kaiser_map_thread_stack(tsk->stack);
+ 	if (err)
+ 		goto free_stack;
++
++	tsk->flags &= ~PF_SU;
++
+ #ifdef CONFIG_SECCOMP
+ 	/*
+ 	 * We must handle setting up seccomp filters once we're under
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index f6f8bb2f0d95..a65d8aa21a1a 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -98,6 +98,38 @@
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/sched.h>
+ 
++static atomic_t __su_instances;
++
++int su_instances(void)
++{
++	return atomic_read(&__su_instances);
++}
++
++bool su_running(void)
++{
++	return su_instances() > 0;
++}
++
++bool su_visible(void)
++{
++	kuid_t uid = current_uid();
++	if (su_running())
++		return true;
++	if (uid_eq(uid, GLOBAL_ROOT_UID) || uid_eq(uid, GLOBAL_SYSTEM_UID))
++		return true;
++	return false;
++}
++
++void su_exec(void)
++{
++	atomic_inc(&__su_instances);
++}
++
++void su_exit(void)
++{
++	atomic_dec(&__su_instances);
++}
++
+ ATOMIC_NOTIFIER_HEAD(load_alert_notifier_head);
+ 
+ DEFINE_MUTEX(sched_domains_mutex);
+-- 
+2.15.0
+

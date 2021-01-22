@@ -1,0 +1,32 @@
+From cfec51b2581ff83f0a54f610bd5406ca893135ba Mon Sep 17 00:00:00 2001
+From: Srinivas Rao L <lsrao@codeaurora.org>
+Date: Fri, 13 Oct 2017 23:41:58 +0530
+Subject: [PATCH 045/420] lpm_levels: Return true for CPU WFI mode allow check
+
+As it's a general understanding across all architectures to have
+a WFI (or equalivalent) mode always present and never disabled
+for cpuidle, return true for CPU WFI mode allow check.
+
+Change-Id: Ic55571488f845e4aaf997faaac3b2e0f22368d4e
+Signed-off-by: Srinivas Rao L <lsrao@codeaurora.org>
+---
+ drivers/cpuidle/lpm-levels-of.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/cpuidle/lpm-levels-of.c b/drivers/cpuidle/lpm-levels-of.c
+index b4675df551b3..83334b44356c 100644
+--- a/drivers/cpuidle/lpm-levels-of.c
++++ b/drivers/cpuidle/lpm-levels-of.c
+@@ -359,6 +359,9 @@ bool lpm_cpu_mode_allow(unsigned int cpu,
+ {
+ 	struct lpm_level_avail *avail = cpu_level_available[cpu];
+ 
++	if (lpm_pdev && !index)
++		return 1;
++
+ 	if (!lpm_pdev || !avail)
+ 		return !from_idle;
+ 
+-- 
+2.15.0
+

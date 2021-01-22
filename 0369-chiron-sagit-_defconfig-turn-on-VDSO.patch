@@ -1,0 +1,48 @@
+From 73346360b69123f688baeba95e528b7e4eeb3c69 Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Tue, 28 Mar 2017 14:11:02 -0700
+Subject: [PATCH 369/420] {chiron,sagit}_defconfig: turn on VDSO
+
+Turn on the vdso32 feature on an arm64 kernel.
+
+Results in roughly a 4 fold speedup for clock_gettime() and other
+timekeeping functions for arm32 executables in the environment.
+
+Signed-off-by: Mark Salyzyn <salyzyn@google.com>
+Bug: 20045882
+Bug: 19198045
+Bug: 63737556
+Change-Id: If39bfad8b287a5455dc8240a73dcc8951e4bc13f
+Signed-off-by: Vol Zhdanov <wight554@gmail.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 38de81415d0f..b46f07d389cb 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -73,6 +73,7 @@ CONFIG_RANDOMIZE_BASE=y
+ CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=y
+ # CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set
+ CONFIG_COMPAT=y
++CONFIG_COMPAT_VDSO=y
+ CONFIG_PM_AUTOSLEEP=y
+ CONFIG_PM_WAKELOCKS=y
+ CONFIG_PM_WAKELOCKS_LIMIT=0
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 61a4828fa507..514c25211f80 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -73,6 +73,7 @@ CONFIG_RANDOMIZE_BASE=y
+ CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=y
+ # CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set
+ CONFIG_COMPAT=y
++CONFIG_COMPAT_VDSO=y
+ CONFIG_PM_AUTOSLEEP=y
+ CONFIG_PM_WAKELOCKS=y
+ CONFIG_PM_WAKELOCKS_LIMIT=0
+-- 
+2.15.0
+

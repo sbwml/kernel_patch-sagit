@@ -1,0 +1,40 @@
+From 213b26a1e8f136bda897fe417a9177af775d1442 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Tue, 3 Dec 2019 18:54:29 -0800
+Subject: [PATCH 237/420] f2fs: keep quota data on write_begin failure
+
+This patch avoids some unnecessary locks for quota files when write_begin
+fails.
+
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 3e66ad8a1e7c..9ef5cdd96c8d 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -2584,13 +2584,16 @@ static void f2fs_write_failed(struct address_space *mapping, loff_t to)
+ 	struct inode *inode = mapping->host;
+ 	loff_t i_size = i_size_read(inode);
+ 
++	if (IS_NOQUOTA(inode))
++		return;
++
++	/* In the fs-verity case, f2fs_end_enable_verity() does the truncate */
+ 	if (to > i_size) {
+ 		down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 		down_write(&F2FS_I(inode)->i_mmap_sem);
+ 
+ 		truncate_pagecache(inode, i_size);
+-		if (!IS_NOQUOTA(inode))
+-			f2fs_truncate_blocks(inode, i_size, true);
++		f2fs_truncate_blocks(inode, i_size, true);
+ 
+ 		up_write(&F2FS_I(inode)->i_mmap_sem);
+ 		up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-- 
+2.15.0
+

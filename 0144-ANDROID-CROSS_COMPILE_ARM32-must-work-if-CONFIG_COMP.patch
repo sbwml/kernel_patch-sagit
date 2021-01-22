@@ -1,0 +1,33 @@
+From e5020159b6b3b58cbcb62f1820d8854c4f4bba1d Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Tue, 28 Mar 2017 14:11:02 -0700
+Subject: [PATCH 144/420] ANDROID: CROSS_COMPILE_ARM32 must work if
+ CONFIG_COMPAT_VDSO
+
+Prevent surprise loss of vdso32 support.
+
+Signed-off-by: Mark Salyzyn <salyzyn@google.com>
+Bug: 63737556
+Bug: 20045882
+Bug: 19198045
+Change-Id: I8b381f7649b95b298ea9e1a99aa3794c7bc08d09
+---
+ arch/arm64/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/Makefile b/arch/arm64/Makefile
+index 6a5994163f24..4df2b48fae44 100644
+--- a/arch/arm64/Makefile
++++ b/arch/arm64/Makefile
+@@ -44,7 +44,7 @@ ifeq ($(CONFIG_COMPAT_VDSO), y)
+   # CONFIG_CROSS_COMPILE_ARM32, set CROSS_COMPILE_ARM32 to an appropriate value
+   # when invoking make and fix CONFIG_CROSS_COMPILE_ARM32.
+   ifeq ($(CROSS_COMPILE_ARM32),)
+-    $(warning CROSS_COMPILE_ARM32 not defined or empty, the compat vDSO will not be built)
++    $(error CROSS_COMPILE_ARM32 not defined or empty, the compat vDSO will not be built)
+   else ifeq ($(cc-name),clang)
+     export CLANG_TRIPLE_ARM32 ?= $(CROSS_COMPILE_ARM32)
+     export CLANG_TARGET_ARM32 := --target=$(notdir $(CLANG_TRIPLE_ARM32:%-=%))
+-- 
+2.15.0
+

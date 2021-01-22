@@ -1,0 +1,35 @@
+From d1c122a71bce1990e4a6bd0b9fd48a10cd7813e2 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Tue, 27 Aug 2019 18:17:55 +0800
+Subject: [PATCH 208/420] f2fs: add missing documents of
+ reserve_root/resuid/resgid
+
+Add missing documents.
+
+Fixes: 7e65be49ed94f ("f2fs: add reserved blocks for root user")
+Fixes: 7c2e59632b846 ("f2fs: add resgid and resuid to reserve root blocks")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ Documentation/filesystems/f2fs.txt | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/Documentation/filesystems/f2fs.txt b/Documentation/filesystems/f2fs.txt
+index c2e941317b87..c82c00919d50 100644
+--- a/Documentation/filesystems/f2fs.txt
++++ b/Documentation/filesystems/f2fs.txt
+@@ -157,6 +157,11 @@ noinline_data          Disable the inline data feature, inline data feature is
+                        enabled by default.
+ data_flush             Enable data flushing before checkpoint in order to
+                        persist data of regular and symlink.
++reserve_root=%d        Support configuring reserved space which is used for
++                       allocation from a privileged user with specified uid or
++                       gid, unit: 4KB, the default limit is 0.2% of user blocks.
++resuid=%d              The user ID which may use the reserved blocks.
++resgid=%d              The group ID which may use the reserved blocks.
+ fault_injection=%d     Enable fault injection in all supported types with
+                        specified injection rate.
+ fault_type=%d          Support configuring fault injection type, should be
+-- 
+2.15.0
+

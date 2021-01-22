@@ -1,0 +1,27 @@
+From 68a9580bd60376c320ca56495626724d7954f77f Mon Sep 17 00:00:00 2001
+From: Trevor Bunker <trevorbunker@google.com>
+Date: Tue, 18 Oct 2016 20:46:37 -0700
+Subject: [PATCH 057/420] drivers: pinctrl: mask non-wakeup interrupts in
+ suspend path
+
+Bug: 30079159
+Change-Id: If66a7ab642d28c7a42e0af337e388af4c1915677
+---
+ drivers/pinctrl/qcom/pinctrl-msm.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
+index 963da8e0c29a..8b192f5c6b18 100644
+--- a/drivers/pinctrl/qcom/pinctrl-msm.c
++++ b/drivers/pinctrl/qcom/pinctrl-msm.c
+@@ -759,6 +759,7 @@ static int msm_gpio_irq_set_wake(struct irq_data *d, unsigned int on)
+ 
+ static struct irq_chip msm_gpio_irq_chip = {
+ 	.name           = "msmgpio",
++	.flags          = IRQCHIP_MASK_ON_SUSPEND,
+ 	.irq_mask       = msm_gpio_irq_mask,
+ 	.irq_unmask     = msm_gpio_irq_unmask,
+ 	.irq_ack        = msm_gpio_irq_ack,
+-- 
+2.15.0
+

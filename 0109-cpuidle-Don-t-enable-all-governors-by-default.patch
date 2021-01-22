@@ -1,0 +1,43 @@
+From 5e46ee6d8eb4f7dfcde4f2e9bbdb046320aad570 Mon Sep 17 00:00:00 2001
+From: Jean Delvare <jdelvare@suse.de>
+Date: Mon, 11 Jan 2016 17:43:02 +0100
+Subject: [PATCH 109/420] cpuidle: Don't enable all governors by default
+
+Since commit d6f346f2d2 (cpuidle: improve governor Kconfig options)
+the best cpuidle governor is selected automatically. There is little
+point in additionally selecting the other one as it will not be used,
+so don't select both governors by default.
+
+Being able to select more than one governor is still good for
+developers booting with cpuidle_sysfs_switch, though.
+
+This fixes the second half of kernel BZ #65531.
+
+Change-Id: I8757624f6bdc2d418b12ffcad294d273b9aca26d
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=65531
+Signed-off-by: Jean Delvare <jdelvare@suse.de>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Harsh Shandilya <harsh@prjkt.io>
+---
+ drivers/cpuidle/Kconfig | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/cpuidle/Kconfig b/drivers/cpuidle/Kconfig
+index 8c7930b5a65f..7e48eb5bf0a7 100644
+--- a/drivers/cpuidle/Kconfig
++++ b/drivers/cpuidle/Kconfig
+@@ -19,11 +19,9 @@ config CPU_IDLE_MULTIPLE_DRIVERS
+ 
+ config CPU_IDLE_GOV_LADDER
+ 	bool "Ladder governor (for periodic timer tick)"
+-	default y
+ 
+ config CPU_IDLE_GOV_MENU
+ 	bool "Menu governor (for tickless system)"
+-	default y
+ 
+ config DT_IDLE_STATES
+ 	bool
+-- 
+2.15.0
+

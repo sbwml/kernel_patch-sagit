@@ -1,0 +1,42 @@
+From af82dece66c3c58d67f9b786d1672752d5840862 Mon Sep 17 00:00:00 2001
+From: Albert I <kras@raphielgang.org>
+Date: Wed, 12 Jun 2019 14:37:10 +0800
+Subject: [PATCH 399/420] {chiron,sagit}_defconfig: Enable
+ CONFIG_WLAN_FEATURE_PKT_CAPTURE
+
+* Fixes WiFi tethering
+
+Signed-off-by: Albert I <kras@raphielgang.org>
+Change-Id: I334947d57c8e36fb509c00c520db3cbe2998d175
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 2a012b86099a..db1e1b2d07ce 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -582,6 +582,7 @@ CONFIG_MCC_TO_SCC_SWITCH=y
+ CONFIG_QCACLD_WLAN_LFR2=y
+ CONFIG_WLAN_FEATURE_DISA=y
+ CONFIG_WLAN_FEATURE_FILS=y
++CONFIG_WLAN_FEATURE_PKT_CAPTURE=y
+ CONFIG_QPNP_REVID=y
+ CONFIG_QPNP_COINCELL=y
+ CONFIG_SPS=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 9811d9b2b3d0..4168ead36381 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -582,6 +582,7 @@ CONFIG_MCC_TO_SCC_SWITCH=y
+ CONFIG_QCACLD_WLAN_LFR2=y
+ CONFIG_WLAN_FEATURE_DISA=y
+ CONFIG_WLAN_FEATURE_FILS=y
++CONFIG_WLAN_FEATURE_PKT_CAPTURE=y
+ CONFIG_QPNP_REVID=y
+ CONFIG_QPNP_COINCELL=y
+ CONFIG_SPS=y
+-- 
+2.15.0
+

@@ -1,0 +1,65 @@
+From 51379d40531a97b98e9bb4ac045524af592b67bb Mon Sep 17 00:00:00 2001
+From: Neeraj Soni <neersoni@codeaurora.org>
+Date: Tue, 6 Feb 2018 08:25:50 -0800
+Subject: [PATCH 106/420] scsi: ufs: Increase crypto thread priority
+
+Crypto work is used to program file keys into
+the Crypto HW. Some times the thread is scheduled
+but is not executed and is preempted oftenly by
+block i/o kworker. This causes same requests to be
+requeued  leading to timeout and cpu overload issues.
+
+Change-Id: Icd9b5108018b85d60d72858c92673e1f2feddbd4
+Signed-off-by: Neeraj Soni <neersoni@codeaurora.org>
+---
+ drivers/scsi/ufs/ufs-qcom-ice.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/scsi/ufs/ufs-qcom-ice.c b/drivers/scsi/ufs/ufs-qcom-ice.c
+index 84765b17086c..d288e83ec9d7 100644
+--- a/drivers/scsi/ufs/ufs-qcom-ice.c
++++ b/drivers/scsi/ufs/ufs-qcom-ice.c
+@@ -27,6 +27,8 @@
+ 
+ #define UFS_QCOM_ICE_DEFAULT_DBG_PRINT_EN	0
+ 
++static struct workqueue_struct *ice_workqueue;
++
+ static void ufs_qcom_ice_dump_regs(struct ufs_qcom_host *qcom_host, int offset,
+ 					int len, char *prefix)
+ {
+@@ -224,6 +226,13 @@ int ufs_qcom_ice_init(struct ufs_qcom_host *qcom_host)
+ 	}
+ 
+ 	qcom_host->dbg_print_en |= UFS_QCOM_ICE_DEFAULT_DBG_PRINT_EN;
++	ice_workqueue = alloc_workqueue("ice-set-key",
++			WQ_MEM_RECLAIM | WQ_HIGHPRI, 0);
++	if (!ice_workqueue) {
++		dev_err(ufs_dev, "%s: workqueue allocation failed.\n",
++			__func__);
++		goto out;
++	}
+ 	INIT_WORK(&qcom_host->ice_cfg_work, ufs_qcom_ice_cfg_work);
+ 
+ out:
+@@ -284,7 +293,7 @@ int ufs_qcom_ice_req_setup(struct ufs_qcom_host *qcom_host,
+ 				if (!qcom_host->work_pending) {
+ 					qcom_host->req_pending = cmd->request;
+ 
+-					if (!schedule_work(
++					if (!queue_work(ice_workqueue,
+ 						&qcom_host->ice_cfg_work)) {
+ 						qcom_host->req_pending = NULL;
+ 
+@@ -404,7 +413,7 @@ int ufs_qcom_ice_cfg_start(struct ufs_qcom_host *qcom_host,
+ 				if (!qcom_host->work_pending) {
+ 
+ 					qcom_host->req_pending = cmd->request;
+-					if (!schedule_work(
++					if (!queue_work(ice_workqueue,
+ 						&qcom_host->ice_cfg_work)) {
+ 						qcom_host->req_pending = NULL;
+ 
+-- 
+2.15.0
+

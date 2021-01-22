@@ -1,0 +1,90 @@
+From 5227f5b708dc7d5e434196fbdd606aeeb673c2ca Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Thu, 26 Mar 2020 17:43:56 +0800
+Subject: [PATCH 267/420] f2fs: switch discard_policy.timeout to bool type
+
+While checking discard timeout, we use specified type
+UMOUNT_DISCARD_TIMEOUT, so just replace doplicy.timeout with
+it, and switch doplicy.timeout to bool type.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h    |  2 +-
+ fs/f2fs/segment.c | 16 ++++++++--------
+ 2 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 7526a5b2c76f..d81dc556bacf 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -384,8 +384,8 @@ struct discard_policy {
+ 	bool io_aware;			/* issue discard in idle time */
+ 	bool sync;			/* submit discard with REQ_SYNC flag */
+ 	bool ordered;			/* issue discard by lba order */
++	bool timeout;			/* discard timeout for put_super */
+ 	unsigned int granularity;	/* discard granularity */
+-	int timeout;			/* discard timeout for put_super */
+ };
+ 
+ struct discard_cmd_control {
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index 508e1e3cec27..bf85be4e7853 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -1158,7 +1158,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
+ 
+ 	dpolicy->max_requests = DEF_MAX_DISCARD_REQUEST;
+ 	dpolicy->io_aware_gran = MAX_PLIST_NUM;
+-	dpolicy->timeout = 0;
++	dpolicy->timeout = false;
+ 
+ 	if (discard_type == DPOLICY_BG) {
+ 		dpolicy->min_interval = DEF_MIN_DISCARD_ISSUE_TIME;
+@@ -1183,6 +1183,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
+ 		dpolicy->io_aware = false;
+ 		/* we need to issue all to keep CP_TRIMMED_FLAG */
+ 		dpolicy->granularity = 1;
++		dpolicy->timeout = true;
+ 	}
+ }
+ 
+@@ -1547,12 +1548,12 @@ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
+ 	int i, issued = 0;
+ 	bool io_interrupted = false;
+ 
+-	if (dpolicy->timeout != 0)
+-		f2fs_update_time(sbi, dpolicy->timeout);
++	if (dpolicy->timeout)
++		f2fs_update_time(sbi, UMOUNT_DISCARD_TIMEOUT);
+ 
+ 	for (i = MAX_PLIST_NUM - 1; i >= 0; i--) {
+-		if (dpolicy->timeout != 0 &&
+-				f2fs_time_over(sbi, dpolicy->timeout))
++		if (dpolicy->timeout &&
++				f2fs_time_over(sbi, UMOUNT_DISCARD_TIMEOUT))
+ 			break;
+ 
+ 		if (i + 1 < dpolicy->granularity)
+@@ -1573,8 +1574,8 @@ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
+ 		list_for_each_entry_safe(dc, tmp, pend_list, list) {
+ 			f2fs_bug_on(sbi, dc->state != D_PREP);
+ 
+-			if (dpolicy->timeout != 0 &&
+-				f2fs_time_over(sbi, dpolicy->timeout))
++			if (dpolicy->timeout &&
++				f2fs_time_over(sbi, UMOUNT_DISCARD_TIMEOUT))
+ 				break;
+ 
+ 			if (dpolicy->io_aware && i < dpolicy->io_aware_gran &&
+@@ -1753,7 +1754,6 @@ bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi)
+ 
+ 	__init_discard_policy(sbi, &dpolicy, DPOLICY_UMOUNT,
+ 					dcc->discard_granularity);
+-	dpolicy.timeout = UMOUNT_DISCARD_TIMEOUT;
+ 	__issue_discard_cmd(sbi, &dpolicy);
+ 	dropped = __drop_discard_cmd(sbi);
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,39 @@
+From f89b174d1a61a5b3cdba3668576a5f9b45583e3b Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Wed, 28 Aug 2019 17:33:35 +0800
+Subject: [PATCH 215/420] f2fs: fix extent corrupotion during directIO in LFS
+ mode
+
+In LFS mode, por_fsstress testcase reports a bug as below:
+
+[ASSERT] (fsck_chk_inode_blk: 931)  --> ino: 0x12fe has wrong ext: [pgofs:142, blk:215424, len:16]
+
+Since commit f847c699cff3 ("f2fs: allow out-place-update for direct
+IO in LFS mode"), we start to allow OPU mode for direct IO, however,
+we missed to update extent cache in __allocate_data_block(), finally,
+it cause extent field being inconsistent with physical block address,
+fix it.
+
+Fixes: f847c699cff3 ("f2fs: allow out-place-update for direct IO in LFS mode")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index d082d07a017d..306cb642d91d 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -1052,7 +1052,7 @@ alloc:
+ 	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO)
+ 		invalidate_mapping_pages(META_MAPPING(sbi),
+ 					old_blkaddr, old_blkaddr);
+-	f2fs_set_data_blkaddr(dn);
++	f2fs_update_data_blkaddr(dn, dn->data_blkaddr);
+ 
+ 	/*
+ 	 * i_size will be updated by direct_IO. Otherwise, we'll get stale
+-- 
+2.15.0
+

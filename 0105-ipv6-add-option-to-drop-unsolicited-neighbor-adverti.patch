@@ -1,0 +1,111 @@
+From 29aa370863eabbabe31cc7edd67879b62f5634fd Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Thu, 4 Feb 2016 13:31:20 +0100
+Subject: [PATCH 105/420] ipv6: add option to drop unsolicited neighbor
+ advertisements
+
+In certain 802.11 wireless deployments, there will be NA proxies
+that use knowledge of the network to correctly answer requests.
+To prevent unsolicitd advertisements on the shared medium from
+being a problem, on such deployments wireless needs to drop them.
+
+Enable this by providing an option called "drop_unsolicited_na".
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit aec215e7aa380fe5f85eb6948766b58bf78cb6c3)
+
+Change-Id: Iad429a767a786087b0985632be44932b2e3fd1a8
+---
+ Documentation/networking/ip-sysctl.txt | 7 +++++++
+ include/linux/ipv6.h                   | 1 +
+ net/ipv6/addrconf.c                    | 8 ++++++++
+ net/ipv6/ndisc.c                       | 9 +++++++++
+ 4 files changed, 25 insertions(+)
+
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index 55492e5564ac..0ebc3dfa83e2 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -1710,6 +1710,13 @@ drop_unicast_in_l2_multicast - BOOLEAN
+ 
+ 	By default this is turned off.
+ 
++drop_unsolicited_na - BOOLEAN
++	Drop all unsolicited neighbor advertisements, for example if there's
++	a known good NA proxy on the network and such frames need not be used
++	(or in the case of 802.11, must not be used to prevent attacks.)
++
++	By default this is turned off.
++
+ icmp/*:
+ ratelimit - INTEGER
+ 	Limit the maximal rates for sending ICMPv6 packets.
+diff --git a/include/linux/ipv6.h b/include/linux/ipv6.h
+index 53e7b5b9c83f..454fa09de1c7 100644
+--- a/include/linux/ipv6.h
++++ b/include/linux/ipv6.h
+@@ -59,6 +59,7 @@ struct ipv6_devconf {
+ 	__s32           ndisc_notify;
+ 	__s32		suppress_frag_ndisc;
+ 	__s32		accept_ra_mtu;
++	__s32		drop_unsolicited_na;
+ 	struct ipv6_stable_secret {
+ 		bool initialized;
+ 		struct in6_addr secret;
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index 2cbe6409e52b..5183466df92a 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -4773,6 +4773,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
+ 	/* we omit DEVCONF_STABLE_SECRET for now */
+ 	array[DEVCONF_USE_OIF_ADDRS_ONLY] = cnf->use_oif_addrs_only;
+ 	array[DEVCONF_DROP_UNICAST_IN_L2_MULTICAST] = cnf->drop_unicast_in_l2_multicast;
++	array[DEVCONF_DROP_UNSOLICITED_NA] = cnf->drop_unsolicited_na;
+ }
+ 
+ static inline size_t inet6_ifla6_size(void)
+@@ -5866,6 +5867,13 @@ static struct addrconf_sysctl_table
+ 			.mode		= 0644,
+ 			.proc_handler	= proc_dointvec,
+ 		},
++		{
++			.procname	= "drop_unsolicited_na",
++			.data		= &ipv6_devconf.drop_unsolicited_na,
++			.maxlen		= sizeof(int),
++			.mode		= 0644,
++			.proc_handler	= proc_dointvec,
++		},
+ 		{
+ 			/* sentinel */
+ 		}
+diff --git a/net/ipv6/ndisc.c b/net/ipv6/ndisc.c
+index e16a05ca4879..963ac8e2a448 100644
+--- a/net/ipv6/ndisc.c
++++ b/net/ipv6/ndisc.c
+@@ -884,6 +884,7 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 				    offsetof(struct nd_msg, opt));
+ 	struct ndisc_options ndopts;
+ 	struct net_device *dev = skb->dev;
++	struct inet6_dev *idev = __in6_dev_get(dev);
+ 	struct inet6_ifaddr *ifp;
+ 	struct neighbour *neigh;
+ 
+@@ -903,6 +904,14 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 		return;
+ 	}
+ 
++	/* For some 802.11 wireless deployments (and possibly other networks),
++	 * there will be a NA proxy and unsolicitd packets are attacks
++	 * and thus should not be accepted.
++	 */
++	if (!msg->icmph.icmp6_solicited && idev &&
++	    idev->cnf.drop_unsolicited_na)
++		return;
++
+ 	if (!ndisc_parse_options(msg->opt, ndoptlen, &ndopts)) {
+ 		ND_PRINTK(2, warn, "NS: invalid ND option\n");
+ 		return;
+-- 
+2.15.0
+

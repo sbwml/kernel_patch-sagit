@@ -1,0 +1,30 @@
+From d5bac969ef6172284b145101b8604331f50ccafd Mon Sep 17 00:00:00 2001
+From: Sultanxda <sultanxda@gmail.com>
+Date: Sat, 17 Mar 2018 14:03:05 -0700
+Subject: [PATCH 011/420] staging: qcacld-3.0: load driver at device_initcall
+
+The earlier, the better.
+
+Change-Id: Iae43260050117d7b464dd3c7f47bf8093941a274
+Signed-off-by: Sultanxda <sultanxda@gmail.com>
+Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
+---
+ drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c b/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
+index ba3efe7f4ae6..5f92c82b7239 100644
+--- a/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
++++ b/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
+@@ -13795,7 +13795,7 @@ void hdd_drv_ops_inactivity_handler(unsigned long arg)
+ module_init(hdd_module_init);
+ module_exit(hdd_module_exit);
+ #else
+-late_initcall(hdd_module_init);
++device_initcall(hdd_module_init);
+ #endif
+ 
+ MODULE_LICENSE("Dual BSD/GPL");
+-- 
+2.15.0
+

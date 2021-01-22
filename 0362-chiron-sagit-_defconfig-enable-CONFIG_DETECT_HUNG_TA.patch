@@ -1,0 +1,44 @@
+From f03b4f7fd92268382c231c57750bcda342ee4846 Mon Sep 17 00:00:00 2001
+From: Hridya Valsaraju <hridya@google.com>
+Date: Thu, 12 Apr 2018 21:43:28 -0700
+Subject: [PATCH 362/420] {chiron,sagit}_defconfig: enable
+ CONFIG_DETECT_HUNG_TASK
+
+Test: device boots and /proc/sys/hung_task_* files
+exist
+Bug: 77842593
+
+Change-Id: I5761cfc09a36bf275f9f09ec55158c0a6e8fb71c
+Signed-off-by: Hridya Valsaraju <hridya@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 0691cf35bcdd..e6babba9e8d9 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -677,6 +677,7 @@ CONFIG_NLS_ISO8859_1=y
+ CONFIG_PRINTK_TIME=y
+ CONFIG_DEBUG_INFO=y
+ CONFIG_MAGIC_SYSRQ=y
++CONFIG_DETECT_HUNG_TASK=y
+ CONFIG_PANIC_TIMEOUT=5
+ CONFIG_SCHEDSTATS=y
+ # CONFIG_DEBUG_PREEMPT is not set
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 778d4a3d56cb..2edc8ba221d9 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -677,6 +677,7 @@ CONFIG_NLS_ISO8859_1=y
+ CONFIG_PRINTK_TIME=y
+ CONFIG_DEBUG_INFO=y
+ CONFIG_MAGIC_SYSRQ=y
++CONFIG_DETECT_HUNG_TASK=y
+ CONFIG_PANIC_TIMEOUT=5
+ CONFIG_SCHEDSTATS=y
+ # CONFIG_DEBUG_PREEMPT is not set
+-- 
+2.15.0
+

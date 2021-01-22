@@ -1,0 +1,38 @@
+From a5e45cbb28b404cf3161d3b7fa85ba3dc75dd197 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Sat, 28 Apr 2018 07:15:53 +0000
+Subject: [PATCH 314/420] qpnp-wled: disable ovp irq after handling
+
+From Xiaomi kernel.
+
+Change-Id: I82a972b39e13a10f32159f592ce7e9872da6c269
+---
+ drivers/leds/leds-qpnp-wled.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/leds/leds-qpnp-wled.c b/drivers/leds/leds-qpnp-wled.c
+index bc8677f37d8f..d39be226ca9e 100644
+--- a/drivers/leds/leds-qpnp-wled.c
++++ b/drivers/leds/leds-qpnp-wled.c
+@@ -1518,7 +1518,7 @@ static irqreturn_t qpnp_wled_ovp_irq_handler(int irq, void *_wled)
+ 			QPNP_WLED_FAULT_STATUS(wled->ctrl_base), &fault_sts);
+ 	if (rc < 0) {
+ 		pr_err("Error in reading WLED_FAULT_STATUS rc=%d\n", rc);
+-		return IRQ_HANDLED;
++		goto end;
+ 	}
+ 
+ 	if (fault_sts & (QPNP_WLED_OVP_FAULT_BIT | QPNP_WLED_ILIM_FAULT_BIT))
+@@ -1552,6 +1552,9 @@ static irqreturn_t qpnp_wled_ovp_irq_handler(int irq, void *_wled)
+ 		}
+ 	}
+ 
++end:
++	disable_irq_nosync(wled->ovp_irq);
++	wled->ovp_irq_disabled = true;
+ 	return IRQ_HANDLED;
+ }
+ 
+-- 
+2.15.0
+

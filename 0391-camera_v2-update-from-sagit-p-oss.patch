@@ -1,0 +1,209 @@
+From 95cd121e2aa2b96acbca780f854d73fd85901154 Mon Sep 17 00:00:00 2001
+From: wloot <wlootlxt123@gmail.com>
+Date: Thu, 11 Jul 2019 18:27:56 +0800
+Subject: [PATCH 391/420] camera_v2: update from sagit-p-oss
+
+---
+ .../platform/msm/camera_v2/isp/msm_isp_axi_util.c  |  4 +-
+ .../msm/camera_v2/jpeg_dma/msm_jpeg_dma_hw.c       |  4 +-
+ .../msm/camera_v2/sensor/actuator/msm_actuator.c   | 70 ----------------------
+ .../msm/camera_v2/sensor/eeprom/msm_eeprom.c       |  2 +-
+ .../msm/camera_v2/sensor/msm_sensor_init.c         | 15 +----
+ .../platform/msm/camera_v2/sensor/ois/msm_ois.c    |  2 +-
+ 6 files changed, 10 insertions(+), 87 deletions(-)
+
+diff --git a/drivers/media/platform/msm/camera_v2/isp/msm_isp_axi_util.c b/drivers/media/platform/msm/camera_v2/isp/msm_isp_axi_util.c
+index 45eebbed68de..af7b684c0205 100644
+--- a/drivers/media/platform/msm/camera_v2/isp/msm_isp_axi_util.c
++++ b/drivers/media/platform/msm/camera_v2/isp/msm_isp_axi_util.c
+@@ -3646,18 +3646,18 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
+ 		) {
+ 		pr_debug("%s:%d invalid time to request frame %d\n",
+ 			__func__, __LINE__, frame_id);
+-		vfe_dev->isp_page->drop_reconfig = 1;
++		goto error;
+ 	} else if ((vfe_dev->axi_data.src_info[frame_src].active) &&
+ 			((frame_id ==
+ 			vfe_dev->axi_data.src_info[frame_src].frame_id) ||
+ 			(frame_id == vfe_dev->irq_sof_id)) &&
+ 			(stream_info->undelivered_request_cnt <=
+ 				MAX_BUFFERS_IN_HW)) {
+-		vfe_dev->isp_page->drop_reconfig = 1;
+ 		pr_debug("%s: vfe_%d request_frame %d cur frame id %d pix %d\n",
+ 			__func__, vfe_dev->pdev->id, frame_id,
+ 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id,
+ 			vfe_dev->axi_data.src_info[VFE_PIX_0].active);
++		goto error;
+ 	} else if ((vfe_dev->axi_data.src_info[frame_src].active && (frame_id !=
+ 		vfe_dev->axi_data.src_info[frame_src].frame_id + vfe_dev->
+ 		axi_data.src_info[frame_src].sof_counter_step)) ||
+diff --git a/drivers/media/platform/msm/camera_v2/jpeg_dma/msm_jpeg_dma_hw.c b/drivers/media/platform/msm/camera_v2/jpeg_dma/msm_jpeg_dma_hw.c
+index 994ba93907e3..02b0cdcb2be1 100644
+--- a/drivers/media/platform/msm/camera_v2/jpeg_dma/msm_jpeg_dma_hw.c
++++ b/drivers/media/platform/msm/camera_v2/jpeg_dma/msm_jpeg_dma_hw.c
+@@ -1729,7 +1729,8 @@ error_regulators_get:
+ void msm_jpegdma_hw_put(struct msm_jpegdma_device *dma)
+ {
+ 	mutex_lock(&dma->lock);
+-	BUG_ON(dma->ref_count == 0);
++	if (WARN_ON(!dma->ref_count))
++		goto err;
+ 
+ 	if (--dma->ref_count == 0) {
+ 		msm_jpegdma_hw_halt(dma);
+@@ -1747,6 +1748,7 @@ void msm_jpegdma_hw_put(struct msm_jpegdma_device *dma)
+ 	}
+ 	/* Reset clock rate, need to be updated on next processing */
+ 	dma->active_clock_rate = -1;
++err:
+ 	mutex_unlock(&dma->lock);
+ }
+ 
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/actuator/msm_actuator.c b/drivers/media/platform/msm/camera_v2/sensor/actuator/msm_actuator.c
+index 06a9be49bbf9..1274d6c1d962 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/actuator/msm_actuator.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/actuator/msm_actuator.c
+@@ -1168,12 +1168,6 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
+ {
+ 	int32_t rc = 0;
+ 	enum msm_sensor_power_seq_gpio_t gpio;
+-#ifdef CONFIG_MACH_XIAOMI_MSM8998
+-	struct device_node *src_node = NULL;
+-	int i = 0;
+-	const char *af_name;
+-	struct device_node *of_node = a_ctrl->pdev->dev.of_node;
+-#endif
+ 
+ 	CDBG("Enter\n");
+ 	if (a_ctrl->actuator_state != ACT_DISABLE_STATE) {
+@@ -1233,70 +1227,6 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
+ 		a_ctrl->i2c_tbl_index = 0;
+ 		a_ctrl->actuator_state = ACT_OPS_INACTIVE;
+ 	}
+-#ifdef CONFIG_MACH_XIAOMI_MSM8998
+-	else {
+-		if (of_gpio_count(of_node)) {
+-			for (gpio = SENSOR_GPIO_AF_PWDM;
+-				gpio < SENSOR_GPIO_MAX; gpio++) {
+-				if (a_ctrl->gconf &&
+-					a_ctrl->gconf->gpio_num_info &&
+-					a_ctrl->gconf->gpio_num_info->valid[gpio] == 1) {
+-					gpio_set_value_cansleep(
+-							a_ctrl->gconf->gpio_num_info->
+-							gpio_num[gpio],
+-							GPIOF_OUT_INIT_LOW);
+-
+-					if (a_ctrl->cam_pinctrl_status) {
+-						rc = pinctrl_select_state(
+-							a_ctrl->pinctrl_info.pinctrl,
+-							a_ctrl->pinctrl_info.gpio_state_suspend);
+-						if (rc < 0)
+-							pr_err("ERR:%s:%d cannot set pin to suspend state: %d",
+-								__func__, __LINE__, rc);
+-
+-						devm_pinctrl_put(a_ctrl->pinctrl_info.pinctrl);
+-					}
+-					a_ctrl->cam_pinctrl_status = 0;
+-					rc = msm_camera_request_gpio_table(
+-						a_ctrl->gconf->cam_gpio_req_tbl,
+-						a_ctrl->gconf->cam_gpio_req_tbl_size,
+-						0);
+-					if (rc < 0)
+-						pr_err("ERR:%s:Failed in selecting state in actuator power down: %d\n", __func__, rc);
+-				}
+-			}
+-		} else {
+-			for (i = 0; i < a_ctrl->vreg_cfg.num_vreg; i++) {
+-				src_node = of_parse_phandle(of_node, "cam_vaf-supply", 0);
+-				if (!src_node) {
+-					pr_err("actuator node is NULL\n");
+-					continue;
+-				}
+-				rc = of_property_read_string(src_node, "regulator-name", &af_name);
+-				if (rc < 0) {
+-					if (strcmp(af_name, "vaf_gpio_supply") == 0) {
+-						pr_err("read regulator-name fail\n");
+-						of_node_put(src_node);
+-						src_node = NULL;
+-						break;
+-					}
+-				} else {
+-					pr_err("actuator regulator name = %s", af_name);
+-					if (gpio_get_value_cansleep(29)) {
+-						pr_err("actuator power down again\n");
+-						for (i = 0; i < 3; i++) {
+-							rc = msm_actuator_vreg_control(a_ctrl, 0);
+-							if (rc < 0)
+-								pr_err("%s power down again failed %d\n", __func__, __LINE__);
+-						}
+-					}
+-				}
+-				of_node_put(src_node);
+-				src_node = NULL;
+-			}
+-		}
+-	}
+-#endif
+ 
+ 	CDBG("Exit\n");
+ 	return rc;
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c b/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c
+index 6369b9027228..f629cae5d58a 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c
+@@ -29,7 +29,7 @@ struct sensor_eeprom_name_t {
+ };
+ 
+ struct sensor_eeprom_name_t sensor_eeprom_name[3];
+-uint8_t eeprom_name_count;
++uint8_t eeprom_name_count = 0;
+ #endif
+ 
+ DEFINE_MSM_MUTEX(msm_eeprom_mutex);
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/msm_sensor_init.c b/drivers/media/platform/msm/camera_v2/sensor/msm_sensor_init.c
+index 2b4531a5b2ee..3ee660773e59 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/msm_sensor_init.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/msm_sensor_init.c
+@@ -41,23 +41,14 @@ static const struct v4l2_subdev_internal_ops msm_sensor_init_internal_ops;
+ 
+ static int msm_sensor_wait_for_probe_done(struct msm_sensor_init_t *s_init)
+ {
+-	int rc;
+-#ifdef CONFIG_MACH_XIAOMI_MSM8998
+-	int tm = 60000;
+-#else
+-	int tm = 20000;
+-#endif
+-
+ 	if (s_init->module_init_status == 1) {
+ 		CDBG("msm_cam_get_module_init_status -2\n");
+ 		return 0;
+ 	}
+-	rc = wait_event_timeout(s_init->state_wait,
+-		(s_init->module_init_status == 1), msecs_to_jiffies(tm));
+-	if (rc == 0)
+-		pr_err("%s:%d wait timeout\n", __func__, __LINE__);
++	wait_event(s_init->state_wait,
++		(s_init->module_init_status == 1));
+ 
+-	return rc;
++	return 0;
+ }
+ 
+ /* Static function definition */
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/ois/msm_ois.c b/drivers/media/platform/msm/camera_v2/sensor/ois/msm_ois.c
+index b283e957031d..6b5a730c1f22 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/ois/msm_ois.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/ois/msm_ois.c
+@@ -35,7 +35,7 @@ DEFINE_MSM_MUTEX(msm_ois_mutex);
+ 
+ #ifdef CONFIG_MACH_CHIRON
+ bool ois_spi_work_flag = true;
+-bool ois_check_flag;
++bool ois_check_flag = false;
+ #endif
+ 
+ static struct v4l2_file_operations msm_ois_v4l2_subdev_fops;
+-- 
+2.15.0
+

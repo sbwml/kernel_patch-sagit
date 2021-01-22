@@ -1,0 +1,40 @@
+From e4734756d230de943e6e00f7e90a747e435377ce Mon Sep 17 00:00:00 2001
+From: Akhil Narang <akhilnarang.1999@gmail.com>
+Date: Sat, 15 Sep 2018 16:24:03 +0530
+Subject: [PATCH 014/420] staging: qcacld-3.0: fix build after disabling debug
+
+../drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c:1569:45: error: expected expression
+                hdd_debug("LRO and GRO both are disabled");
+                                                          ^
+1 error generated.
+
+Convert to a normal if-else statement
+
+Change-Id: Ia210044d6d6103a1120f0e5fdb74b88ff28d8fc8
+Signed-off-by: Akhil Narang <akhilnarang.1999@gmail.com>
+---
+ drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c b/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c
+index 0e7e841e02c6..d5658b28e686 100644
+--- a/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c
++++ b/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c
+@@ -1575,9 +1575,11 @@ static inline void hdd_resolve_rx_ol_mode(hdd_context_t *hdd_ctx)
+ {
+ 	if (!(hdd_ctx->config->lro_enable ^
+ 	    hdd_ctx->config->gro_enable)) {
+-		hdd_ctx->config->lro_enable && hdd_ctx->config->gro_enable ?
+-		hdd_err("Can't enable both LRO and GRO, disabling Rx offload") :
+-		hdd_debug("LRO and GRO both are disabled");
++		if (hdd_ctx->config->lro_enable && hdd_ctx->config->gro_enable) {
++			hdd_err("Can't enable both LRO and GRO, disabling Rx offload");
++		} else {
++			hdd_debug("LRO and GRO both are disabled");
++		}
+ 		hdd_ctx->ol_enable = 0;
+ 	} else if (hdd_ctx->config->lro_enable) {
+ 		hdd_debug("Rx offload LRO is enabled");
+-- 
+2.15.0
+

@@ -1,0 +1,41 @@
+From 2022d91eb7340b704656540653533821c7871d7a Mon Sep 17 00:00:00 2001
+From: flar2 <asegaert@gmail.com>
+Date: Tue, 13 Sep 2016 00:44:20 -0400
+Subject: [PATCH 409/420] msm: mdss: kcal: disable igc update
+
+Change-Id: Ieeadc7323520cffa6c83b821642faf60bad52e75
+---
+ drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c b/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c
+index ebac74668e5d..48007c606854 100644
+--- a/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c
++++ b/drivers/video/fbdev/msm/mdss_mdp_kcal_ctrl.c
+@@ -399,7 +399,7 @@ static ssize_t kcal_enable_store(struct device *dev,
+ 	if (mdss_mdp_kcal_is_panel_on()) {
+ 		mdss_mdp_kcal_update_pcc(lut_data);
+ 		mdss_mdp_kcal_update_pa(lut_data);
+-		mdss_mdp_kcal_update_igc(lut_data);
++		//mdss_mdp_kcal_update_igc(lut_data);
+ 	} else
+ 		lut_data->queue_changes = true;
+ 
+@@ -425,12 +425,8 @@ static ssize_t kcal_invert_store(struct device *dev,
+ 		(lut_data->invert == kcal_invert))
+ 		return -EINVAL;
+ 
+-	lut_data->invert = kcal_invert;
+-
+-	if (mdss_mdp_kcal_is_panel_on())
+-		mdss_mdp_kcal_update_igc(lut_data);
+-	else
+-		lut_data->queue_changes = true;
++	//disable
++	lut_data->invert = 0;
+ 
+ 	return count;
+ }
+-- 
+2.15.0
+

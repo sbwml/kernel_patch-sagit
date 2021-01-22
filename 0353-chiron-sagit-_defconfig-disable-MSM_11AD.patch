@@ -1,0 +1,39 @@
+From 31f8451cd17c34b647a12386712069d44a34ac85 Mon Sep 17 00:00:00 2001
+From: Thierry Strudel <tstrudel@google.com>
+Date: Mon, 6 Mar 2017 16:20:26 -0800
+Subject: [PATCH 353/420] {chiron,sagit}_defconfig: disable MSM_11AD
+
+Change-Id: I01399642ab5d2e6405cf8dbb23caa140fcf71b56
+Signed-off-by: Thierry Strudel <tstrudel@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 40e06885c35f..72d0177c6765 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -531,6 +531,7 @@ CONFIG_RMNET_IPA3=y
+ CONFIG_GPIO_USB_DETECT=y
+ CONFIG_MSM_MHI=y
+ CONFIG_MSM_MHI_UCI=y
++# CONFIG_MSM_11AD is not set
+ CONFIG_USB_BAM=y
+ CONFIG_MSM_MDSS_PLL=y
+ CONFIG_REMOTE_SPINLOCK_MSM=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 40e06885c35f..72d0177c6765 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -531,6 +531,7 @@ CONFIG_RMNET_IPA3=y
+ CONFIG_GPIO_USB_DETECT=y
+ CONFIG_MSM_MHI=y
+ CONFIG_MSM_MHI_UCI=y
++# CONFIG_MSM_11AD is not set
+ CONFIG_USB_BAM=y
+ CONFIG_MSM_MDSS_PLL=y
+ CONFIG_REMOTE_SPINLOCK_MSM=y
+-- 
+2.15.0
+

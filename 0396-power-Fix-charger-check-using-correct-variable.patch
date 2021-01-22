@@ -1,0 +1,28 @@
+From b077af81821d0e68ad4b6cc73a2e62185bcceef1 Mon Sep 17 00:00:00 2001
+From: wloot <wlootlxt123@gmail.com>
+Date: Fri, 21 Jun 2019 17:33:37 +0800
+Subject: [PATCH 396/420] power: Fix charger check using correct variable
+
+Change-Id: Idd31366758c7482bfb4fa343527058b10cd30e8b
+Signed-off-by: wloot <wlootlxt123@gmail.com>
+Signed-off-by: Volodymyr Zhdanov <wight554@gmail.com>
+---
+ drivers/power/supply/qcom/smb-lib.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/power/supply/qcom/smb-lib.c b/drivers/power/supply/qcom/smb-lib.c
+index f013b439c13c..33ad68160fdd 100644
+--- a/drivers/power/supply/qcom/smb-lib.c
++++ b/drivers/power/supply/qcom/smb-lib.c
+@@ -2014,7 +2014,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
+ 	if (chg->system_temp_level == 0)
+ 		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+ 
+-	switch (chg->usb_psy_desc.type) {
++	switch (chg->real_charger_type) {
+ 	case POWER_SUPPLY_TYPE_USB_HVDCP:
+ 		thermal_mitigation = chg->thermal_mitigation_qc2;
+ 		break;
+-- 
+2.15.0
+

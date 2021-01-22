@@ -1,0 +1,31 @@
+From 6aca6f1dc102b563339ca170c4bb57c06d6b649c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Fri, 20 Dec 2019 17:20:05 -0800
+Subject: [PATCH 246/420] f2fs: run fsck when getting bad inode during GC
+
+This is to avoid inifinite GC when trying to disable checkpoint.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/gc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index e59176a64934..ff877c5dabc9 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -1049,8 +1049,10 @@ next_step:
+ 
+ 		if (phase == 3) {
+ 			inode = f2fs_iget(sb, dni.ino);
+-			if (IS_ERR(inode) || is_bad_inode(inode))
++			if (IS_ERR(inode) || is_bad_inode(inode)) {
++				set_sbi_flag(sbi, SBI_NEED_FSCK);
+ 				continue;
++			}
+ 
+ 			if (!down_write_trylock(
+ 				&F2FS_I(inode)->i_gc_rwsem[WRITE])) {
+-- 
+2.15.0
+

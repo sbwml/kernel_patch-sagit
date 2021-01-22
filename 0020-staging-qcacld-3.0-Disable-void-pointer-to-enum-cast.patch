@@ -1,0 +1,59 @@
+From e5756ebf96171c7b40894cb6d54dfcbfe8b8e771 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Thu, 21 Jan 2021 17:12:30 +0800
+Subject: [PATCH 020/420] staging: qcacld-3.0: Disable
+ void-pointer-to-enum-cast warning
+
+* error logs:
+
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:2953:26: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                bss_complete->status = (eSapStatus) context;
+                                       ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:2973:4: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                        (eSapStatus) context;
+                        ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:2977:4: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                        (eSapStatus)context);
+                        ^~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:2982:30: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                if (eSAP_STATUS_SUCCESS == (eSapStatus)context) {
+                                           ^~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:2990:37: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                } else if (eSAP_STATUS_FAILURE == (eSapStatus)context) {
+                                                  ^~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:2998:4: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                        (eSapStatus) context;
+                        ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:3068:30: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                reassoc_complete->status = (eSapStatus) context;
+                                           ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:3111:27: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                disassoc_comp->status = (eSapStatus) context;
+                                        ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:3129:26: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                key_complete->status = (eSapStatus) context;
+                                       ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:3188:4: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                        (eSapStatus) context;
+                        ^~~~~~~~~~~~~~~~~~~~
+./drivers/staging/qcacld-3.0/core/sap/src/sap_fsm.c:3194:4: error: cast to smaller integer type 'eSapStatus' from 'void *' [-Werror,-Wvoid-pointer-to-enum-cast]
+                        (eSapStatus) context;
+---
+ drivers/staging/qcacld-3.0/Kbuild | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/staging/qcacld-3.0/Kbuild b/drivers/staging/qcacld-3.0/Kbuild
+index b3c270e71e4b..91ad39197023 100644
+--- a/drivers/staging/qcacld-3.0/Kbuild
++++ b/drivers/staging/qcacld-3.0/Kbuild
+@@ -1273,6 +1273,7 @@ CDEFINES :=	-DANI_LITTLE_BYTE_ENDIAN \
+ 		-DPTT_SOCK_SVC_ENABLE \
+ 		-Wall\
+ 		-Werror\
++		-Wno-void-pointer-to-enum-cast\
+ 		-D__linux__ \
+ 		-DHAL_SELF_STA_PER_BSS=1 \
+ 		-DFEATURE_WLAN_WAPI \
+-- 
+2.15.0
+

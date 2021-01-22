@@ -1,0 +1,45 @@
+From dd6a734ec41ca78a9d5dd88a6fc423a887fa5847 Mon Sep 17 00:00:00 2001
+From: Saravana Kannan <skannan@codeaurora.org>
+Date: Thu, 7 Sep 2017 22:22:49 -0700
+Subject: [PATCH 049/420] PM / devfreq: memlat: Don't ignore extremely latency
+ sensitive workloads
+
+The ratio value that's compared against ratio_ceil tunable can be 0 for
+workloads that are extremely latency sensitive. So, we can't ignore cores
+that have a ratio of 0 (which was done to ignore idle cores). So, stop
+ignoring cores with a ratio of 0 and instead check for instruction or
+frequency being 0 to identify idle cores.
+
+Change-Id: I8c6c14f374f016e6612c3b834589d065bad8f488
+Signed-off-by: Saravana Kannan <skannan@codeaurora.org>
+---
+ drivers/devfreq/governor_memlat.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/devfreq/governor_memlat.c b/drivers/devfreq/governor_memlat.c
+index a3c826e152e1..6a8448955183 100644
+--- a/drivers/devfreq/governor_memlat.c
++++ b/drivers/devfreq/governor_memlat.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
++ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -245,7 +245,11 @@ static int devfreq_memlat_get_freq(struct devfreq *df,
+ 					hw->core_stats[i].mem_count,
+ 					hw->core_stats[i].freq, ratio);
+ 
+-		if (ratio && ratio <= node->ratio_ceil
++		if (!hw->core_stats[i].inst_count
++		    || !hw->core_stats[i].freq)
++			continue;
++
++		if (ratio <= node->ratio_ceil
+ 		    && hw->core_stats[i].freq > max_freq) {
+ 			lat_dev = i;
+ 			max_freq = hw->core_stats[i].freq;
+-- 
+2.15.0
+

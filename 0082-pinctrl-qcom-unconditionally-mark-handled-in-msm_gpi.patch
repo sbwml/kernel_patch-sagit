@@ -1,0 +1,33 @@
+From 0c28e1473e2122a69cb106fe8ae55662e0b4a999 Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Thu, 5 Jan 2017 12:30:27 -0800
+Subject: [PATCH 082/420] pinctrl: qcom: unconditionally mark handled in
+ msm_gpio_irq_handler
+
+Current accounting is innaccurate for lazy irq masking and may
+cause handle_bad_irq triggered in such case.
+
+Bug: 30604869
+Change-Id: If805e10c724b755323004da1e1fe18d315e81df2
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ drivers/pinctrl/qcom/pinctrl-msm.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
+index 055b1df3a861..22496ad167a0 100644
+--- a/drivers/pinctrl/qcom/pinctrl-msm.c
++++ b/drivers/pinctrl/qcom/pinctrl-msm.c
+@@ -829,7 +829,8 @@ static bool msm_gpio_irq_handler(struct irq_desc *desc)
+ 		val = readl(pctrl->regs + g->intr_status_reg);
+ 		if (val & BIT(g->intr_status_bit)) {
+ 			irq_pin = irq_find_mapping(gc->irqdomain, i);
+-			handled += generic_handle_irq(irq_pin);
++			generic_handle_irq(irq_pin);
++			handled++;
+ 		}
+ 	}
+ 
+-- 
+2.15.0
+

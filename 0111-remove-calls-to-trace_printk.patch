@@ -1,0 +1,84 @@
+From cbcc85be90f18d0ef47051e7aecba81dd1b0b90e Mon Sep 17 00:00:00 2001
+From: Thierry Strudel <tstrudel@google.com>
+Date: Tue, 14 Mar 2017 13:00:33 -0700
+Subject: [PATCH 111/420] remove calls to trace_printk
+
+Removes boot warning:
+trace_printk() being used. Allocating extra memory.
+
+Change-Id: I3347379da302fc273e9b1d2787863cb244837ce8
+Signed-off-by: Thierry Strudel <tstrudel@google.com>
+---
+ drivers/media/platform/msm/vidc/msm_vidc_debug.h |  4 ----
+ drivers/soc/qcom/msm_bus/msm_bus_fabric_adhoc.c  | 19 -------------------
+ mm/swap_ratio.c                                  |  2 --
+ 3 files changed, 25 deletions(-)
+
+diff --git a/drivers/media/platform/msm/vidc/msm_vidc_debug.h b/drivers/media/platform/msm/vidc/msm_vidc_debug.h
+index 95b2a6d60936..365064760cbc 100644
+--- a/drivers/media/platform/msm/vidc/msm_vidc_debug.h
++++ b/drivers/media/platform/msm/vidc/msm_vidc_debug.h
+@@ -109,10 +109,6 @@ extern bool msm_vidc_debug_timeout;
+ 				pr_info(VIDC_DBG_TAG __fmt, \
+ 						VIDC_MSG_PRIO2STRING(__level), \
+ 						## arg); \
+-			} else if (msm_vidc_debug_out == VIDC_OUT_FTRACE) { \
+-				trace_printk(KERN_DEBUG VIDC_DBG_TAG __fmt, \
+-						VIDC_MSG_PRIO2STRING(__level), \
+-						## arg); \
+ 			} \
+ 		} \
+ 	} while (0)
+diff --git a/drivers/soc/qcom/msm_bus/msm_bus_fabric_adhoc.c b/drivers/soc/qcom/msm_bus/msm_bus_fabric_adhoc.c
+index c41050adae5a..4eafb37d698a 100644
+--- a/drivers/soc/qcom/msm_bus/msm_bus_fabric_adhoc.c
++++ b/drivers/soc/qcom/msm_bus/msm_bus_fabric_adhoc.c
+@@ -52,13 +52,6 @@ ssize_t bw_show(struct device *dev, struct device_attribute *attr,
+ 			bus_node->lnode_list[i].lnode_ab[ACTIVE_CTX],
+ 			bus_node->lnode_list[i].lnode_ib[DUAL_CTX],
+ 			bus_node->lnode_list[i].lnode_ab[DUAL_CTX]);
+-		trace_printk(
+-		"[%d]:%s:Act_IB %llu Act_AB %llu Slp_IB %llu Slp_AB %llu\n",
+-			i, bus_node->lnode_list[i].cl_name,
+-			bus_node->lnode_list[i].lnode_ib[ACTIVE_CTX],
+-			bus_node->lnode_list[i].lnode_ab[ACTIVE_CTX],
+-			bus_node->lnode_list[i].lnode_ib[DUAL_CTX],
+-			bus_node->lnode_list[i].lnode_ab[DUAL_CTX]);
+ 	}
+ 	off += scnprintf((buf + off), PAGE_SIZE,
+ 	"Max_Act_IB %llu Sum_Act_AB %llu Act_Util_fact %d Act_Vrail_comp %d\n",
+@@ -72,18 +65,6 @@ ssize_t bw_show(struct device *dev, struct device_attribute *attr,
+ 		bus_node->node_bw[DUAL_CTX].sum_ab,
+ 		bus_node->node_bw[DUAL_CTX].util_used,
+ 		bus_node->node_bw[DUAL_CTX].vrail_used);
+-	trace_printk(
+-	"Max_Act_IB %llu Sum_Act_AB %llu Act_Util_fact %d Act_Vrail_comp %d\n",
+-		bus_node->node_bw[ACTIVE_CTX].max_ib,
+-		bus_node->node_bw[ACTIVE_CTX].sum_ab,
+-		bus_node->node_bw[ACTIVE_CTX].util_used,
+-		bus_node->node_bw[ACTIVE_CTX].vrail_used);
+-	trace_printk(
+-	"Max_Slp_IB %llu Sum_Slp_AB %lluSlp_Util_fact %d Slp_Vrail_comp %d\n",
+-		bus_node->node_bw[DUAL_CTX].max_ib,
+-		bus_node->node_bw[DUAL_CTX].sum_ab,
+-		bus_node->node_bw[DUAL_CTX].util_used,
+-		bus_node->node_bw[DUAL_CTX].vrail_used);
+ 	return off;
+ }
+ 
+diff --git a/mm/swap_ratio.c b/mm/swap_ratio.c
+index cf2a6e2ae135..eae1fc183104 100644
+--- a/mm/swap_ratio.c
++++ b/mm/swap_ratio.c
+@@ -67,8 +67,6 @@ static int calculate_write_pending(struct swap_info_struct *si,
+ 	si->write_pending = si->max_writes;
+ 	n->write_pending = n->max_writes;
+ 
+-	trace_printk("%u, %u\n", si->max_writes, n->max_writes);
+-
+ 	return 0;
+ }
+ 
+-- 
+2.15.0
+

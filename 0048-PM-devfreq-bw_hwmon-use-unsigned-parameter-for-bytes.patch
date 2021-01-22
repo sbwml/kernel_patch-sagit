@@ -1,0 +1,41 @@
+From e0322a004d14278aa4e10872256cedfe1ca3a073 Mon Sep 17 00:00:00 2001
+From: Maria Yu <aiquny@codeaurora.org>
+Date: Fri, 2 Mar 2018 16:23:32 +0800
+Subject: [PATCH 048/420] PM / devfreq: bw_hwmon: use unsigned parameter for
+ bytes_to_mbps
+
+In bytes_to_mbps function, the parameter is all unsigned,
+so change the decleration of the function to include unsigned long
+long to avoid compilation errors in 32 bit environment.
+Also changed the return value as unsigned long to avoid
+any data loss possible in 64 bit environment.
+
+Change-Id: Ib3906bb4bc16086ae343764c5a718f6f005428c5
+Signed-off-by: Maria Yu <aiquny@codeaurora.org>
+---
+ drivers/devfreq/governor_bw_hwmon.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/devfreq/governor_bw_hwmon.c b/drivers/devfreq/governor_bw_hwmon.c
+index 972de02ca549..c379d2ffe6c0 100644
+--- a/drivers/devfreq/governor_bw_hwmon.c
++++ b/drivers/devfreq/governor_bw_hwmon.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
++ * Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -175,7 +175,7 @@ static DEVICE_ATTR(__attr, 0644, show_list_##__attr, store_list_##__attr)
+ #define MAX_MS	500U
+ 
+ /* Returns MBps of read/writes for the sampling window. */
+-static unsigned int bytes_to_mbps(long long bytes, unsigned int us)
++static unsigned long bytes_to_mbps(unsigned long long bytes, unsigned int us)
+ {
+ 	bytes *= USEC_PER_SEC;
+ 	do_div(bytes, us);
+-- 
+2.15.0
+

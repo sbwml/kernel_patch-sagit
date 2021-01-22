@@ -1,0 +1,45 @@
+From 7bf7003c63a9bb22ce08b7e6b319f912a5bbc0f7 Mon Sep 17 00:00:00 2001
+From: Subhash Jadavani <subhashj@codeaurora.org>
+Date: Tue, 6 Feb 2018 14:57:11 -0800
+Subject: [PATCH 055/420] scsi: ufs: synchronize between rls handler and clock
+ scaling
+
+Fix race condition between rls handler thread and clock scaling thread when
+LINERESET indication is sent out from host controller. A known scenario is
+when clock scaling thread has put link to hibern8 after gear scaling down
+is done, if rls handler thread, scheduled because of LINERESET indication
+from controller, starts to run now to scale gear up (PWM to HS), it would
+fail as the link state is still in hibern8 state. This change fixes this
+race condition by using write semaphore to prevent rls handler thread and
+clock scaling thread getting chance to run simultaneously.
+
+Change-Id: Ia1731c921c42155cacb43029d56491ddffcf2ee2
+Signed-off-by: Subhash Jadavani <subhashj@codeaurora.org>
+Signed-off-by: Can Guo <cang@codeaurora.org>
+---
+ drivers/scsi/ufs/ufshcd.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/scsi/ufs/ufshcd.c b/drivers/scsi/ufs/ufshcd.c
+index 69170ac459b5..d65af117acc9 100644
+--- a/drivers/scsi/ufs/ufshcd.c
++++ b/drivers/scsi/ufs/ufshcd.c
+@@ -6305,6 +6305,7 @@ static void ufshcd_rls_handler(struct work_struct *work)
+ 	hba = container_of(work, struct ufs_hba, rls_work);
+ 	pm_runtime_get_sync(hba->dev);
+ 	ufshcd_scsi_block_requests(hba);
++	down_write(&hba->lock);
+ 	ret = ufshcd_wait_for_doorbell_clr(hba, U64_MAX);
+ 	if (ret) {
+ 		dev_err(hba->dev,
+@@ -6338,6 +6339,7 @@ static void ufshcd_rls_handler(struct work_struct *work)
+ 		hba->restore_needed = false;
+ 
+ out:
++	up_write(&hba->lock);
+ 	ufshcd_scsi_unblock_requests(hba);
+ 	pm_runtime_put_sync(hba->dev);
+ }
+-- 
+2.15.0
+

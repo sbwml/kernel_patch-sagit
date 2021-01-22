@@ -1,0 +1,51 @@
+From 7791abfc654c257f40a4480b6f1e1fef7f70c879 Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Wed, 28 Feb 2018 13:34:22 -0800
+Subject: [PATCH 108/420] ANDROID: mm: add config for default readahead size
+
+Change the VM_MAX_READAHED value from the default 128KB to a
+configurable value. This will allow the readahead window to grow to a
+maximum size bigger than 128KB, which greatly benefits to sequential
+read throughput and thus boot performance.
+
+Bug: 62413151
+Test: boot walleye 100ms faster
+Change-Id: Iad448cf1198056de46654dcb409466802b3b908d
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ include/linux/mm.h | 2 +-
+ mm/Kconfig         | 8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index ecdabf3597ae..ed48a15d6363 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2008,7 +2008,7 @@ int write_one_page(struct page *page, int wait);
+ void task_dirty_inc(struct task_struct *tsk);
+ 
+ /* readahead.c */
+-#define VM_MAX_READAHEAD	512	/* kbytes */
++#define VM_MAX_READAHEAD	CONFIG_VM_MAX_READAHEAD	/* kbytes */
+ #define VM_MIN_READAHEAD	16	/* kbytes (includes current page) */
+ 
+ int force_page_cache_readahead(struct address_space *mapping, struct file *filp,
+diff --git a/mm/Kconfig b/mm/Kconfig
+index 1105a5b79b1e..274a315e0684 100644
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -743,3 +743,11 @@ config PROCESS_RECLAIM
+ 	 (addr, addr + size-bytes) of the process.
+ 
+ 	 Any other vaule is ignored.
++
++config VM_MAX_READAHEAD
++	int "default max readahead window size"
++	default 128
++	help
++	 This sets the VM_MAX_READAHEAD value to allow the readahead window
++	 to grow to a maximum size of configured. This will benefit sequential
++	 read throughput and thus early boot performance.
+-- 
+2.15.0
+

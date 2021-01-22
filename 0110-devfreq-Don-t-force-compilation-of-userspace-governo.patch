@@ -1,0 +1,35 @@
+From abf5decf26493664b38874c67da6974edee9f4e6 Mon Sep 17 00:00:00 2001
+From: Sultanxda <sultanxda@gmail.com>
+Date: Sun, 31 Dec 2017 21:34:03 -0800
+Subject: [PATCH 110/420] devfreq: Don't force compilation of userspace
+ governor
+
+Change-Id: I540ed4fe4bef8f059e577c59a839b27ddee78345
+Signed-off-by: Sultanxda <sultanxda@gmail.com>
+---
+ drivers/devfreq/Kconfig | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/devfreq/Kconfig b/drivers/devfreq/Kconfig
+index 396f66bb28d1..459cbaee990f 100644
+--- a/drivers/devfreq/Kconfig
++++ b/drivers/devfreq/Kconfig
+@@ -210,7 +210,6 @@ config DEVFREQ_SIMPLE_DEV
+ 	tristate "Device driver for simple clock device with no status info"
+ 	select DEVFREQ_GOV_PERFORMANCE
+ 	select DEVFREQ_GOV_POWERSAVE
+-	select DEVFREQ_GOV_USERSPACE
+ 	select DEVFREQ_GOV_CPUFREQ
+ 	help
+ 	  Device driver for simple devices that control their frequency using
+@@ -221,7 +220,6 @@ config QCOM_DEVFREQ_DEVBW
+ 	depends on ARCH_QCOM
+ 	select DEVFREQ_GOV_PERFORMANCE
+ 	select DEVFREQ_GOV_POWERSAVE
+-	select DEVFREQ_GOV_USERSPACE
+ 	select DEVFREQ_GOV_CPUFREQ
+ 	default n
+ 	help
+-- 
+2.15.0
+

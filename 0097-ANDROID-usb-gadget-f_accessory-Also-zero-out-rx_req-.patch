@@ -1,0 +1,40 @@
+From 6a5f76110531ee8a85abfb6cecd1f028d18b9709 Mon Sep 17 00:00:00 2001
+From: Jerry Zhang <zhangjerry@google.com>
+Date: Thu, 22 Feb 2018 11:25:05 -0800
+Subject: [PATCH 097/420] ANDROID: usb: gadget: f_accessory: Also zero out
+ rx_req on unbind
+
+Prevents crash in the following sequence:
+
+successful bind initializes all elements of rx_req
+unbind frees all elements of rx_req but doesn't zero out rx_req
+bind() -> failed create_bulk_endpoints() on allocating rx_req[0], tries
+to free all elements of rx_req, double free on rx_req[1]
+
+Bug: 73769117
+Test: no crash
+Change-Id: I69c538450ea52a1aa718d27a2a48629f66a7e8b6
+Signed-off-by: Jerry Zhang <zhangjerry@google.com>
+---
+ drivers/usb/gadget/function/f_accessory.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/function/f_accessory.c b/drivers/usb/gadget/function/f_accessory.c
+index a2a73aa8f3da..d01052e8aa60 100644
+--- a/drivers/usb/gadget/function/f_accessory.c
++++ b/drivers/usb/gadget/function/f_accessory.c
+@@ -1129,8 +1129,10 @@ acc_function_unbind(struct usb_configuration *c, struct usb_function *f)
+ 
+ 	while ((req = req_get(dev, &dev->tx_idle)))
+ 		acc_request_free(req, dev->ep_in);
+-	for (i = 0; i < RX_REQ_MAX; i++)
++	for (i = 0; i < RX_REQ_MAX; i++) {
+ 		acc_request_free(dev->rx_req[i], dev->ep_out);
++		dev->rx_req[i] = NULL;
++	}
+ 
+ 	acc_hid_unbind(dev);
+ }
+-- 
+2.15.0
+

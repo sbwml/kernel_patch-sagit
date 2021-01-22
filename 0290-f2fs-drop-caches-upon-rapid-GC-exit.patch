@@ -1,0 +1,36 @@
+From 8c6143aa01a53097c391da2ad7b0c6f5b6d323cc Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Mon, 1 Apr 2019 22:09:08 +0900
+Subject: [PATCH 290/420] f2fs: drop caches upon rapid GC exit
+
+Rapid GC would have cleaned hundreds of segments
+that would not be read again anytime soon.
+
+Explicitly drop caches for a bit of peace-of-mind.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/f2fs/gc.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index fa93a4d3f389..1624cad616d0 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -145,6 +145,13 @@ do_gc:
+ 			f2fs_info(sbi,
+ 				"No more GC victim found, "
+ 				"sleeping for %u ms", wait_ms);
++
++			/*
++			 * Rapid GC would have cleaned hundreds of segments
++			 * that would not be read again anytime soon.
++			 */
++			mm_drop_caches(3);
++			f2fs_info(sbi, "dropped caches");
+ 		}
+ 
+ 		trace_f2fs_background_gc(sbi->sb, wait_ms,
+-- 
+2.15.0
+

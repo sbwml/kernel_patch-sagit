@@ -1,0 +1,47 @@
+From 151c0facdff61f6a7cbfd7e64a9c437ae122c7e3 Mon Sep 17 00:00:00 2001
+From: Subhash Jadavani <subhashj@codeaurora.org>
+Date: Thu, 12 Oct 2017 14:32:35 -0700
+Subject: [PATCH 054/420] scsi: ufs: change the clock scaling polling period
+ and up threshold
+
+We have noticed that UFS load based clock scaling is ramping up to highest
+frequency during low power usecases but never scales back to lower
+frequency during the remaining usecase run period. This increases the
+oveall power consumption for a given low power usecase. We analyzed UFS
+data transfer pattern for different low power usecases and updated clock
+scaling polling period & up threshold which helps with power numbers
+without affecting performance numbers.
+
+Change-Id: I74cf8a1f07d1b1a0ac112f28fc98a8a82cac1d28
+Signed-off-by: Subhash Jadavani <subhashj@codeaurora.org>
+---
+ drivers/scsi/ufs/ufshcd.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/scsi/ufs/ufshcd.c b/drivers/scsi/ufs/ufshcd.c
+index 129b3a1b3d7f..69170ac459b5 100644
+--- a/drivers/scsi/ufs/ufshcd.c
++++ b/drivers/scsi/ufs/ufshcd.c
+@@ -389,8 +389,8 @@ static int ufshcd_devfreq_get_dev_status(struct device *dev,
+ 
+ #if IS_ENABLED(CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND)
+ static struct devfreq_simple_ondemand_data ufshcd_ondemand_data = {
+-	.upthreshold = 35,
+-	.downdifferential = 30,
++	.upthreshold = 70,
++	.downdifferential = 65,
+ 	.simple_scaling = 1,
+ };
+ 
+@@ -400,7 +400,7 @@ static void *gov_data;
+ #endif
+ 
+ static struct devfreq_dev_profile ufs_devfreq_profile = {
+-	.polling_ms	= 40,
++	.polling_ms	= 60,
+ 	.target		= ufshcd_devfreq_target,
+ 	.get_dev_status	= ufshcd_devfreq_get_dev_status,
+ };
+-- 
+2.15.0
+

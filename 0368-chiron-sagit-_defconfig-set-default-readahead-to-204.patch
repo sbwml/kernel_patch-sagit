@@ -1,0 +1,48 @@
+From 00de608f43476c09deb16483f9fdc149d1e65fb3 Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Wed, 28 Feb 2018 14:05:47 -0800
+Subject: [PATCH 368/420] {chiron,sagit}_defconfig: set default readahead to
+ 2048KB
+
+Android has been benefiting quicker boot from bigger readahead during
+boottime than runtime. However, the boottime readahead setting is set
+when init is established after treble early mount. This patch will make
+readahead bigger by default so early boot can benefit from it. Readahead
+will be reset by init on boot_complete.
+
+Bug: 62413151
+Test: boot walleye 100ms faster
+Change-Id: Ic9dad5666ce3d4836d73afbcee04cfb875f64f5d
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 148af955aae2..38de81415d0f 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -61,6 +61,7 @@ CONFIG_ARM64_REG_REBALANCE_ON_CTX_SW=y
+ CONFIG_CMA=y
+ CONFIG_ZSMALLOC=y
+ CONFIG_BALANCE_ANON_FILE_RECLAIM=y
++CONFIG_VM_MAX_READAHEAD=2048
+ CONFIG_SECCOMP=y
+ CONFIG_ARMV8_DEPRECATED=y
+ CONFIG_SWP_EMULATION=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index f0a99ca3263d..61a4828fa507 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -61,6 +61,7 @@ CONFIG_ARM64_REG_REBALANCE_ON_CTX_SW=y
+ CONFIG_CMA=y
+ CONFIG_ZSMALLOC=y
+ CONFIG_BALANCE_ANON_FILE_RECLAIM=y
++CONFIG_VM_MAX_READAHEAD=2048
+ CONFIG_SECCOMP=y
+ CONFIG_ARMV8_DEPRECATED=y
+ CONFIG_SWP_EMULATION=y
+-- 
+2.15.0
+

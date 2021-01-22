@@ -1,0 +1,215 @@
+From 03f107cf9d7441751e6fceaca0ef7b3c4dd3b243 Mon Sep 17 00:00:00 2001
+From: Volodymyr Zhdanov <wight554@gmail.com>
+Date: Fri, 12 Jul 2019 15:24:04 +0300
+Subject: [PATCH 338/420] sound: elliptic: update from sagit-p-oss
+
+Change-Id: I77d8c6756d8c4e853b23593c5aabfccd9a34c36d
+---
+ include/sound/apr_audio-v2.h         |  26 ++++++++
+ sound/soc/msm/qdsp6v2/apr_elliptic.c | 123 +++++++++++++++++++++++++----------
+ 2 files changed, 115 insertions(+), 34 deletions(-)
+
+diff --git a/include/sound/apr_audio-v2.h b/include/sound/apr_audio-v2.h
+index f312284024a9..f7a74304e4f9 100644
+--- a/include/sound/apr_audio-v2.h
++++ b/include/sound/apr_audio-v2.h
+@@ -1,4 +1,5 @@
+ /* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
++ * Copyright (C) 2019 XiaoMi, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+@@ -1931,6 +1932,31 @@ struct afe_rtac_user_data_get_v3 {
+ 	struct param_hdr_v3 param_hdr;
+ } __packed;
+ #define AFE_PORT_CMD_SET_PARAM_V2	0x000100EF
++
++struct afe_port_param_data_v2 {
++	u32 module_id;
++/* ID of the module to be configured.
++ * Supported values: Valid module ID
++ */
++
++u32 param_id;
++/* ID of the parameter corresponding to the supported parameters
++ * for the module ID.
++ * Supported values: Valid parameter ID
++ */
++
++u16 param_size;
++/* Actual size of the data for the
++ * module_id/param_id pair. The size is a
++ * multiple of four bytes.
++ * Supported values: > 0
++ */
++
++u16 reserved;
++/* This field must be set to zero.
++ */
++} __packed;
++
+ struct afe_port_cmd_set_param_v2 {
+ 	/* APR Header */
+ 	struct apr_hdr apr_hdr;
+diff --git a/sound/soc/msm/qdsp6v2/apr_elliptic.c b/sound/soc/msm/qdsp6v2/apr_elliptic.c
+index ea7bc931c6c8..795fa2f460a2 100644
+--- a/sound/soc/msm/qdsp6v2/apr_elliptic.c
++++ b/sound/soc/msm/qdsp6v2/apr_elliptic.c
+@@ -10,6 +10,7 @@
+ #include <sound/control.h>
+ #include "msm-pcm-routing-v2.h"
+ #include <sound/q6audio-v2.h>
++#include <sound/q6common.h>
+ #include <sound/apr_audio-v2.h>
+ #include <sound/apr_elliptic.h>
+ #include "msm-elliptic.h"
+@@ -28,43 +29,95 @@ int afe_ultrasound_set_calib_data(int port,
+ 		struct afe_ultrasound_set_params_t *prot_config,
+ 		uint32_t length)
+ {
+-	int ret = -EINVAL;
++	struct afe_port_cmd_set_param_v2 *set_param_v2 = NULL;
++	uint32_t set_param_v2_size = sizeof(struct afe_port_cmd_set_param_v2);
++	struct afe_port_cmd_set_param_v3 *set_param_v3 = NULL;
++	uint32_t set_param_v3_size = sizeof(struct afe_port_cmd_set_param_v3);
++	struct param_hdr_v3 param_hdr = {0};
++	u16 port_id = 0;
+ 	int index = 0;
+-	struct afe_ultrasound_config_command configV;
+-	struct afe_ultrasound_config_command *config;
++	u8 *packed_param_data = NULL;
++	int packed_data_size = sizeof(union param_hdrs) + length;
++	int ret = 0;
+ 
+-	config = &configV;
+ 	pr_debug("[ELUS]: inside %s\n", __func__);
+-	memset(config, 0, sizeof(struct afe_ultrasound_config_command));
+-	if (!prot_config) {
+-		pr_err("%s Invalid params\n", __func__);
+-		goto fail_cmd;
+-	}
+-	if ((q6audio_validate_port(port) < 0)) {
+-		pr_err("%s invalid port %d\n", __func__, port);
+-		goto fail_cmd;
++
++	port_id = q6audio_get_port_id(port);
++	ret = q6audio_validate_port(port_id);
++	if (ret < 0) {
++		pr_err("%s: Not a valid port id = 0x%x ret %d\n", __func__,
++		       port_id, ret);
++		return -EINVAL;
+ 	}
+ 	index = q6audio_get_port_index(port);
+-	config->pdata.module_id = module_id;
+-	config->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+-						  APR_HDR_LEN(APR_HDR_SIZE),
+-						  APR_PKT_VER);
+-	config->hdr.pkt_size = sizeof(struct afe_ultrasound_config_command);
+-	config->hdr.src_port = 0;
+-	config->hdr.dest_port = 0;
+-	config->hdr.token = index;
+-	config->hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
+-	config->param.port_id = q6audio_get_port_id(port);
+-	config->param.payload_size =
+-			sizeof(struct afe_ultrasound_config_command) -
+-			sizeof(config->hdr) - sizeof(config->param);
+-	config->pdata.param_id = param_id;
+-	config->pdata.param_size = length;
++
++	param_hdr.module_id = module_id;
++	param_hdr.instance_id = INSTANCE_ID_0;
++	param_hdr.param_id = param_id;
++	param_hdr.param_size = length;
+ 	pr_debug("[ELUS]: param_size %d\n", length);
+-	memcpy(&config->prot_config, prot_config,
+-		   sizeof(struct afe_ultrasound_set_params_t));
+-	atomic_set(elus_afe.ptr_state, 1);
+-	ret = apr_send_pkt(*elus_afe.ptr_apr, (uint32_t *) config);
++
++	packed_param_data = kzalloc(packed_data_size, GFP_KERNEL);
++	if (packed_param_data == NULL)
++		return -ENOMEM;
++
++	ret = q6common_pack_pp_params(packed_param_data, &param_hdr, (u8 *)prot_config,
++				      &packed_data_size);
++	if (ret) {
++		pr_err("%s: Failed to pack param header and data, error %d\n",
++		       __func__, ret);
++		goto fail_cmd;
++	}
++
++	if (q6common_is_instance_id_supported()) {
++		set_param_v3_size += packed_data_size;
++		set_param_v3 = kzalloc(set_param_v3_size, GFP_KERNEL);
++		if (set_param_v3 == NULL) {
++			ret = -ENOMEM;
++			goto fail_cmd;
++		}
++
++		set_param_v3->apr_hdr.hdr_field =
++			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD, APR_HDR_LEN(APR_HDR_SIZE),
++					APR_PKT_VER);
++		set_param_v3->apr_hdr.pkt_size = sizeof(struct afe_port_cmd_set_param_v3) +
++											packed_data_size;
++		set_param_v3->apr_hdr.src_port = 0;
++		set_param_v3->apr_hdr.dest_port = 0;
++		set_param_v3->apr_hdr.token = index;
++		set_param_v3->apr_hdr.opcode = AFE_PORT_CMD_SET_PARAM_V3;
++		set_param_v3->port_id = port_id;
++		set_param_v3->payload_size = packed_data_size;
++		memcpy(&set_param_v3->param_data, packed_param_data,
++			       packed_data_size);
++
++		atomic_set(elus_afe.ptr_state, 1);
++		ret = apr_send_pkt(*elus_afe.ptr_apr, (uint32_t *) set_param_v3);
++	} else {
++		set_param_v2_size += packed_data_size;
++		set_param_v2 = kzalloc(set_param_v2_size, GFP_KERNEL);
++		if (set_param_v2 == NULL) {
++			ret = -ENOMEM;
++			goto fail_cmd;
++		}
++
++		set_param_v2->apr_hdr.hdr_field =
++			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD, APR_HDR_LEN(APR_HDR_SIZE),
++				      APR_PKT_VER);
++		set_param_v2->apr_hdr.pkt_size = sizeof(struct afe_port_cmd_set_param_v2) +
++											packed_data_size;
++		set_param_v2->apr_hdr.src_port = 0;
++		set_param_v2->apr_hdr.dest_port = 0;
++		set_param_v2->apr_hdr.token = index;
++		set_param_v2->apr_hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
++		set_param_v2->port_id = port_id;
++		set_param_v2->payload_size = packed_data_size;
++		memcpy(&set_param_v2->param_data, packed_param_data,
++			       packed_data_size);
++
++		atomic_set(elus_afe.ptr_state, 1);
++		ret = apr_send_pkt(*elus_afe.ptr_apr, (uint32_t *) set_param_v2);
++	}
+ 	if (ret < 0) {
+ 		pr_err("%s: Setting param for port %d param[0x%x]failed\n",
+ 			   __func__, port, param_id);
+@@ -79,14 +132,16 @@ int afe_ultrasound_set_calib_data(int port,
+ 		goto fail_cmd;
+ 	}
+ 	if (atomic_read(elus_afe.ptr_status) != 0) {
+-		pr_err("%s: config cmd failed\n", __func__);
++		pr_err("%s: set param cmd failed\n", __func__);
+ 		ret = -EINVAL;
+ 		goto fail_cmd;
+ 	}
+ 	ret = 0;
+ fail_cmd:
+-	pr_debug("%s config->pdata.param_id %x status %d\n",
+-	__func__, config->pdata.param_id, ret);
++	pr_debug("%s param_id %x status %d\n", __func__, param_id, ret);
++	kfree(set_param_v2);
++	kfree(set_param_v3);
++	kfree(packed_param_data);
+ 	return ret;
+ }
+ 
+-- 
+2.15.0
+

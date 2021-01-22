@@ -1,0 +1,185 @@
+From d866fcabc95b43e316de3dc1af97f9d9c4aba1e7 Mon Sep 17 00:00:00 2001
+From: wloot <wlootlxt123@gmail.com>
+Date: Thu, 11 Jul 2019 17:28:04 +0800
+Subject: [PATCH 395/420] dts: xiaomi: msm8998: update from sagit-p-oss
+
+Change-Id: I4cf0e2d2accfd6eb9698be112628e79446f7f2cc
+---
+ arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi |  2 +-
+ arch/arm/boot/dts/qcom/xiaomi/msm-pm8998.dtsi         |  1 +
+ arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi        | 10 ----------
+ arch/arm/boot/dts/qcom/xiaomi/msm8998-blsp.dtsi       | 15 ---------------
+ arch/arm/boot/dts/qcom/xiaomi/msm8998-pinctrl.dtsi    |  8 ++++----
+ arch/arm/boot/dts/qcom/xiaomi/msm8998-regulator.dtsi  |  1 -
+ arch/arm/boot/dts/qcom/xiaomi/msm8998-v2.dtsi         |  3 ---
+ arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi  |  2 +-
+ 8 files changed, 7 insertions(+), 35 deletions(-)
+ delete mode 100644 arch/arm/boot/dts/qcom/xiaomi/msm8998-blsp.dtsi
+
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
+index b74eb9bc7ac9..01b3789e51f6 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/chiron-msm8998-mtp.dtsi
+@@ -20,7 +20,6 @@
+ #include "msm8998-camera.dtsi"
+ #include "../msm8998-mdss-panels.dtsi"
+ #include "msm8998-mdss-panels.dtsi"
+-#include "msm8998-blsp.dtsi"
+ #include "msm8998-audio.dtsi"
+ #include "msm8998-mdss.dtsi"
+ 
+@@ -793,6 +792,7 @@
+ 	qcom,fg-recharge-soc-thr = <99>;
+ 	qcom,fg-cutoff-voltage = <3400>;
+ 	qcom,fg-empty-voltage = <3100>;
++	qcom,fg-cutoff-current = <200>;
+ 	qcom,fg-jeita-hyst-temp = <0>;
+ 	qcom,fg-jeita-thresholds = <0 15 45 60>;
+ 	qcom,fg-esr-clamp-mohms = <60>;
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm-pm8998.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm-pm8998.dtsi
+index db3ba4eb5b29..b5273e143787 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm-pm8998.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm-pm8998.dtsi
+@@ -13,6 +13,7 @@
+ &spmi_bus {
+ 	qcom,pm8998@0 {
+ 		qcom,power-on@800 {
++			qcom,pon-dbc-delay = <62500>;
+ 			qcom,kpdpwr-sw-debounce;
+ 			qcom,pon_1 {
+ 				qcom,support-reset = <1>;
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
+index 7eb33f344931..d4440caefa7d 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm-pmi8998.dtsi
+@@ -10,12 +10,6 @@
+  * GNU General Public License for more details.
+  */
+ 
+-&pmi8998_gpios {
+-	gpio@c400 {
+-		status = "okay";
+-	};
+-};
+-
+ &pmi8998_fg {
+ 	qcom,fg-memif@4400 {
+ 		interrupts = <0x2 0x44 0x1 IRQ_TYPE_EDGE_BOTH>,
+@@ -25,10 +19,6 @@
+ 	};
+ };
+ 
+-&pmi8998_pwm_2 {
+-	status = "okay";
+-};
+-
+ &red_led {
+ 	/delete-property/ linux,default-trigger;
+ 	qcom,max-current = <3>;
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm8998-blsp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm8998-blsp.dtsi
+deleted file mode 100644
+index 03aa8b46a7c5..000000000000
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm8998-blsp.dtsi
++++ /dev/null
+@@ -1,15 +0,0 @@
+-/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License version 2 and
+- * only version 2 as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- */
+-
+-&spi_12 {
+-	/delete-property/ qcom,use-bam;
+-};
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm8998-pinctrl.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm8998-pinctrl.dtsi
+index 487c8cd8083c..ae559e860276 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm8998-pinctrl.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm8998-pinctrl.dtsi
+@@ -20,7 +20,7 @@
+ 		config {
+ 			pins = "gpio13";
+ 			bias-disable;
+-			drive-strength = <0x6>;
++			drive-strength = <6>;
+ 		};
+ 	};
+ 
+@@ -33,7 +33,7 @@
+ 		config {
+ 			pins = "gpio13";
+ 			bias-pull-down;
+-			drive-strength = <0x6>;
++			drive-strength = <6>;
+ 		};
+ 	};
+ 
+@@ -46,7 +46,7 @@
+ 		config {
+ 			pins = "gpio14";
+ 			bias-disable;
+-			drive-strength = <0x6>;
++			drive-strength = <6>;
+ 		};
+ 	};
+ 
+@@ -59,7 +59,7 @@
+ 		config {
+ 			pins = "gpio14";
+ 			bias-pull-down;
+-			drive-strength = <0x4>;
++			drive-strength = <4>;
+ 		};
+ 	};
+ 
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm8998-regulator.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm8998-regulator.dtsi
+index d2b0450f437b..8a98bb61e8df 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm8998-regulator.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm8998-regulator.dtsi
+@@ -13,7 +13,6 @@
+ &pm8998_l6 {
+ 	regulator-min-microvolt = <1800000>;
+ 	regulator-max-microvolt = <1800000>;
+-	qcom,init-ldo-mode = <1>;
+ };
+ 
+ &pm8998_l14 {
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/msm8998-v2.dtsi b/arch/arm/boot/dts/qcom/xiaomi/msm8998-v2.dtsi
+index dbc5219889fc..ca19078b7879 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/msm8998-v2.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/msm8998-v2.dtsi
+@@ -19,6 +19,3 @@
+ 			"tcsr_clamp_dig_n_1p8";
+ };
+ 
+-&msm_gpu {
+-	qcom,restrict-pwrlevel = <1>;	
+-};
+diff --git a/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi b/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
+index f5b7f2ce309e..761960205a74 100644
+--- a/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
++++ b/arch/arm/boot/dts/qcom/xiaomi/sagit-msm8998-mtp.dtsi
+@@ -20,7 +20,6 @@
+ #include "msm8998-camera.dtsi"
+ #include "../msm8998-mdss-panels.dtsi"
+ #include "msm8998-mdss-panels.dtsi"
+-#include "msm8998-blsp.dtsi"
+ #include "msm8998-audio.dtsi"
+ #include "msm8998-mdss.dtsi"
+ 
+@@ -837,6 +836,7 @@
+ 	qcom,fg-recharge-soc-thr = <99>;
+ 	qcom,fg-cutoff-voltage = <3400>;
+ 	qcom,fg-empty-voltage = <3100>;
++	qcom,fg-cutoff-current = <200>;
+ 	qcom,fg-jeita-hyst-temp = <0>;
+ 	qcom,fg-jeita-thresholds = <0 15 45 60>;
+ 	qcom,fg-esr-clamp-mohms = <60>;
+-- 
+2.15.0
+

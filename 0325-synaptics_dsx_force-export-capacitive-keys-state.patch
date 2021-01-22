@@ -1,0 +1,43 @@
+From aae5412b12732eb807f4a4fc8150bfad58a55339 Mon Sep 17 00:00:00 2001
+From: dianlujitao <dianlujitao@lineageos.org>
+Date: Fri, 2 Feb 2018 17:21:25 +0800
+Subject: [PATCH 325/420] synaptics_dsx_force: export capacitive keys state
+
+Change-Id: I9d92311d52dc170dd5b2a9770072a57eff038f2c
+---
+ drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+index 2f97a1ec68dd..acfabf6d6af0 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+@@ -785,6 +785,9 @@ static struct device_attribute attrs[] = {
+ 			synaptics_rmi4_reversed_keys_store),
+ };
+ 
++bool capacitive_keys_enabled;
++EXPORT_SYMBOL(capacitive_keys_enabled);
++
+ #if defined(CONFIG_SECURE_TOUCH)
+ static DEVICE_ATTR(secure_touch_enable, (S_IRUGO | S_IWUSR | S_IWGRP), synaptics_secure_touch_enable_show, synaptics_secure_touch_enable_store);
+ static DEVICE_ATTR(secure_touch, S_IRUGO, synaptics_secure_touch_show, NULL);
+@@ -1147,6 +1150,7 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
+ 	}
+ 
+ 	rmi4_data->button_0d_enabled = input;
++	capacitive_keys_enabled = input;
+ 
+ 	return count;
+ }
+@@ -3240,6 +3244,7 @@ static int synaptics_rmi4_f1a_init(struct synaptics_rmi4_data *rmi4_data,
+ 		goto error_exit;
+ 
+ 	rmi4_data->button_0d_enabled = 1;
++	capacitive_keys_enabled = 1;
+ 
+ 	return 0;
+ 
+-- 
+2.15.0
+

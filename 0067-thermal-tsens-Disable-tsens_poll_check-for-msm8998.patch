@@ -1,0 +1,31 @@
+From 7541508310eaf7adf454bbcc0ae7976f05392351 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Tue, 5 Mar 2019 03:31:20 +0200
+Subject: [PATCH 067/420] thermal: tsens: Disable tsens_poll_check for msm8998
+
+Change-Id: I7f9c9f63fe2987c5b75773d87fde26e263c5ac71
+---
+ drivers/thermal/msm-tsens.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/thermal/msm-tsens.c b/drivers/thermal/msm-tsens.c
+index d7cc99ba6c40..f9e6135b7df6 100644
+--- a/drivers/thermal/msm-tsens.c
++++ b/drivers/thermal/msm-tsens.c
+@@ -2252,11 +2252,11 @@ static int get_device_tree_data(struct platform_device *pdev,
+ 		tmdev->wd_bark_val = wd_bark;
+ 	}
+ 
+-	if (!strcmp(id->compatible, "qcom,msm8996-tsens") ||
+-		(!strcmp(id->compatible, "qcom,msm8998-tsens")))
++	if (!strcmp(id->compatible, "qcom,msm8996-tsens"))
+ 		tmdev->tsens_type = TSENS_TYPE3;
+ 	else if (!strcmp(id->compatible, "qcom,msmtitanium-tsens") ||
+ 		(!strcmp(id->compatible, "qcom,sdm660-tsens")) ||
++		(!strcmp(id->compatible, "qcom,msm8998-tsens")) ||
+ 		(!strcmp(id->compatible, "qcom,sdm630-tsens")) ||
+ 		(!strcmp(id->compatible, "qcom,msmhamster-tsens"))) {
+ 		tmdev->tsens_type = TSENS_TYPE3;
+-- 
+2.15.0
+

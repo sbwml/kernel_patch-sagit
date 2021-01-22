@@ -1,0 +1,222 @@
+From d33d29192783ee7234771d11bc6b2a6ad1de907c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Fri, 18 Oct 2019 10:06:40 -0700
+Subject: [PATCH 227/420] f2fs: support aligned pinned file
+
+This patch supports 2MB-aligned pinned file, which can guarantee no GC at all
+by allocating fully valid 2MB segment.
+
+Check free segments by has_not_enough_free_secs() with large budget.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h     |  4 +++-
+ fs/f2fs/file.c     | 42 +++++++++++++++++++++++++++++++++++++-----
+ fs/f2fs/recovery.c |  2 +-
+ fs/f2fs/segment.c  | 31 +++++++++++++++++++++++++++----
+ fs/f2fs/segment.h  |  2 ++
+ fs/f2fs/super.c    |  1 +
+ fs/f2fs/sysfs.c    |  2 ++
+ 7 files changed, 73 insertions(+), 11 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 66ba05ce8200..d4e9e90a4362 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -944,6 +944,7 @@ enum {
+ 	CURSEG_WARM_NODE,	/* direct node blocks of normal files */
+ 	CURSEG_COLD_NODE,	/* indirect node blocks */
+ 	NO_CHECK_TYPE,
++	CURSEG_COLD_DATA_PINNED,/* cold data for pinned file */
+ };
+ 
+ struct flush_cmd {
+@@ -1351,6 +1352,7 @@ struct f2fs_sb_info {
+ 
+ 	/* threshold for gc trials on pinned files */
+ 	u64 gc_pin_file_threshold;
++	struct rw_semaphore pin_sem;
+ 
+ 	/* maximum # of trials to find a victim segment for SSR and GC */
+ 	unsigned int max_victim_search;
+@@ -3173,7 +3175,7 @@ void f2fs_release_discard_addrs(struct f2fs_sb_info *sbi);
+ int f2fs_npages_for_summary_flush(struct f2fs_sb_info *sbi, bool for_ra);
+ void allocate_segment_for_resize(struct f2fs_sb_info *sbi, int type,
+ 					unsigned int start, unsigned int end);
+-void f2fs_allocate_new_segments(struct f2fs_sb_info *sbi);
++void f2fs_allocate_new_segments(struct f2fs_sb_info *sbi, int type);
+ int f2fs_trim_fs(struct f2fs_sb_info *sbi, struct fstrim_range *range);
+ bool f2fs_exist_trim_candidates(struct f2fs_sb_info *sbi,
+ 					struct cp_control *cpc);
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 50397e5b71c9..47c070070aef 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1542,12 +1542,44 @@ static int expand_inode_data(struct inode *inode, loff_t offset,
+ 	if (off_end)
+ 		map.m_len++;
+ 
+-	if (f2fs_is_pinned_file(inode))
+-		map.m_seg_type = CURSEG_COLD_DATA;
++	if (!map.m_len)
++		return 0;
++
++	if (f2fs_is_pinned_file(inode)) {
++		block_t len = (map.m_len >> sbi->log_blocks_per_seg) <<
++					sbi->log_blocks_per_seg;
++		block_t done = 0;
++
++		if (map.m_len % sbi->blocks_per_seg)
++			len += sbi->blocks_per_seg;
++
++		map.m_len = sbi->blocks_per_seg;
++next_alloc:
++		if (has_not_enough_free_secs(sbi, 0,
++			GET_SEC_FROM_SEG(sbi, overprovision_segments(sbi)))) {
++			mutex_lock(&sbi->gc_mutex);
++			err = f2fs_gc(sbi, true, false, NULL_SEGNO);
++			if (err && err != -ENODATA && err != -EAGAIN)
++				goto out_err;
++		}
+ 
+-	err = f2fs_map_blocks(inode, &map, 1, (f2fs_is_pinned_file(inode) ?
+-						F2FS_GET_BLOCK_PRE_DIO :
+-						F2FS_GET_BLOCK_PRE_AIO));
++		down_write(&sbi->pin_sem);
++		map.m_seg_type = CURSEG_COLD_DATA_PINNED;
++		f2fs_allocate_new_segments(sbi, CURSEG_COLD_DATA);
++		err = f2fs_map_blocks(inode, &map, 1, F2FS_GET_BLOCK_PRE_DIO);
++		up_write(&sbi->pin_sem);
++
++		done += map.m_len;
++		len -= map.m_len;
++		map.m_lblk += map.m_len;
++		if (!err && len)
++			goto next_alloc;
++
++		map.m_len = done;
++	} else {
++		err = f2fs_map_blocks(inode, &map, 1, F2FS_GET_BLOCK_PRE_AIO);
++	}
++out_err:
+ 	if (err) {
+ 		pgoff_t last_off;
+ 
+diff --git a/fs/f2fs/recovery.c b/fs/f2fs/recovery.c
+index 5d0c77054252..a094b2fd8a43 100644
+--- a/fs/f2fs/recovery.c
++++ b/fs/f2fs/recovery.c
+@@ -703,7 +703,7 @@ next:
+ 		f2fs_put_page(page, 1);
+ 	}
+ 	if (!err)
+-		f2fs_allocate_new_segments(sbi);
++		f2fs_allocate_new_segments(sbi, NO_CHECK_TYPE);
+ 	return err;
+ }
+ 
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index 6ce9d89af291..683ea7d884f6 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -2766,7 +2766,7 @@ unlock:
+ 	up_read(&SM_I(sbi)->curseg_lock);
+ }
+ 
+-void f2fs_allocate_new_segments(struct f2fs_sb_info *sbi)
++void f2fs_allocate_new_segments(struct f2fs_sb_info *sbi, int type)
+ {
+ 	struct curseg_info *curseg;
+ 	unsigned int old_segno;
+@@ -2775,10 +2775,17 @@ void f2fs_allocate_new_segments(struct f2fs_sb_info *sbi)
+ 	down_write(&SIT_I(sbi)->sentry_lock);
+ 
+ 	for (i = CURSEG_HOT_DATA; i <= CURSEG_COLD_DATA; i++) {
++		if (type != NO_CHECK_TYPE && i != type)
++			continue;
++
+ 		curseg = CURSEG_I(sbi, i);
+-		old_segno = curseg->segno;
+-		SIT_I(sbi)->s_ops->allocate_segment(sbi, i, true);
+-		locate_dirty_segment(sbi, old_segno);
++		if (type == NO_CHECK_TYPE || curseg->next_blkoff ||
++				get_valid_blocks(sbi, curseg->segno, false) ||
++				get_ckpt_valid_blocks(sbi, curseg->segno)) {
++			old_segno = curseg->segno;
++			SIT_I(sbi)->s_ops->allocate_segment(sbi, i, true);
++			locate_dirty_segment(sbi, old_segno);
++		}
+ 	}
+ 
+ 	up_write(&SIT_I(sbi)->sentry_lock);
+@@ -3145,6 +3152,19 @@ void f2fs_allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
+ {
+ 	struct sit_info *sit_i = SIT_I(sbi);
+ 	struct curseg_info *curseg = CURSEG_I(sbi, type);
++	bool put_pin_sem = false;
++
++	if (type == CURSEG_COLD_DATA) {
++		/* GC during CURSEG_COLD_DATA_PINNED allocation */
++		if (down_read_trylock(&sbi->pin_sem)) {
++			put_pin_sem = true;
++		} else {
++			type = CURSEG_WARM_DATA;
++			curseg = CURSEG_I(sbi, type);
++		}
++	} else if (type == CURSEG_COLD_DATA_PINNED) {
++		type = CURSEG_COLD_DATA;
++	}
+ 
+ 	down_read(&SM_I(sbi)->curseg_lock);
+ 
+@@ -3210,6 +3230,9 @@ void f2fs_allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
+ 	mutex_unlock(&curseg->curseg_mutex);
+ 
+ 	up_read(&SM_I(sbi)->curseg_lock);
++
++	if (put_pin_sem)
++		up_read(&sbi->pin_sem);
+ }
+ 
+ static void update_device_state(struct f2fs_io_info *fio)
+diff --git a/fs/f2fs/segment.h b/fs/f2fs/segment.h
+index 325781a1ae4d..a95467b202ea 100644
+--- a/fs/f2fs/segment.h
++++ b/fs/f2fs/segment.h
+@@ -313,6 +313,8 @@ struct sit_entry_set {
+  */
+ static inline struct curseg_info *CURSEG_I(struct f2fs_sb_info *sbi, int type)
+ {
++	if (type == CURSEG_COLD_DATA_PINNED)
++		type = CURSEG_COLD_DATA;
+ 	return (struct curseg_info *)(SM_I(sbi)->curseg_array + type);
+ }
+ 
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 7ff0ffac84ae..70483a9553e4 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2813,6 +2813,7 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
+ 	spin_lock_init(&sbi->dev_lock);
+ 
+ 	init_rwsem(&sbi->sb_lock);
++	init_rwsem(&sbi->pin_sem);
+ }
+ 
+ static int init_percpu_info(struct f2fs_sb_info *sbi)
+diff --git a/fs/f2fs/sysfs.c b/fs/f2fs/sysfs.c
+index 9e910b15bb4b..6b1e68b62d67 100644
+--- a/fs/f2fs/sysfs.c
++++ b/fs/f2fs/sysfs.c
+@@ -134,6 +134,8 @@ static ssize_t features_show(struct f2fs_attr *a,
+ 	if (f2fs_sb_has_sb_chksum(sbi))
+ 		len += snprintf(buf + len, PAGE_SIZE - len, "%s%s",
+ 				len ? ", " : "", "sb_checksum");
++	len += snprintf(buf + len, PAGE_SIZE - len, "%s%s",
++				len ? ", " : "", "pin_file");
+ 	len += snprintf(buf + len, PAGE_SIZE - len, "\n");
+ 	return len;
+ }
+-- 
+2.15.0
+

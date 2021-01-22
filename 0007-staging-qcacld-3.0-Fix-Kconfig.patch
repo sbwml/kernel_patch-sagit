@@ -1,0 +1,38 @@
+From 7e763e59029af49631545b9ac9cd1c2a463a991c Mon Sep 17 00:00:00 2001
+From: Ethan Chen <intervigil@gmail.com>
+Date: Sun, 3 Dec 2017 17:59:33 -0800
+Subject: [PATCH 007/420] staging: qcacld-3.0: Fix Kconfig
+
+* Correct badly named options
+* Add missing options
+
+Change-Id: I4a5cc2216fe36a07520827cdb9577a75ec09450a
+---
+ drivers/staging/qcacld-3.0/Kconfig | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/staging/qcacld-3.0/Kconfig b/drivers/staging/qcacld-3.0/Kconfig
+index fafceef2258e..dca8422643c1 100644
+--- a/drivers/staging/qcacld-3.0/Kconfig
++++ b/drivers/staging/qcacld-3.0/Kconfig
+@@ -132,11 +132,16 @@ config ICMP_DISABLE_PS
+ 	bool "Enable ICMP packet disable powersave feature"
+ 	default n
+ 
+-config CONFIG_BUILD_TIMESTAMP
++config BUILD_TIMESTAMP
+ 	bool "Embed timestamp in wlan version"
+ 	default n
+ 
+ config WLAN_FEATURE_SARV1_TO_SARV2
+ 	bool "Enable conversion of SAR v1 to v2 feature"
+ 	default n
++
++config WLAN_FEATURE_FILS
++	bool "Enable FILS_SK feature"
++	default n
++
+ endif # QCA_CLD_WLAN
+-- 
+2.15.0
+

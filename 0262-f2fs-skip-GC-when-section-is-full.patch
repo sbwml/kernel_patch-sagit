@@ -1,0 +1,30 @@
+From b1d2a9b44da1abaf1355190b00a89b3c40305c0c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Sun, 9 Feb 2020 13:23:28 -0800
+Subject: [PATCH 262/420] f2fs: skip GC when section is full
+
+This fixes skipping GC when segment is full in large section.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/gc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index 984617011da0..5545cdecf927 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -1018,8 +1018,8 @@ next_step:
+ 		 * race condition along with SSR block allocation.
+ 		 */
+ 		if ((gc_type == BG_GC && has_not_enough_free_secs(sbi, 0, 0)) ||
+-				get_valid_blocks(sbi, segno, false) ==
+-							sbi->blocks_per_seg)
++				get_valid_blocks(sbi, segno, true) ==
++							BLKS_PER_SEC(sbi))
+ 			return submitted;
+ 
+ 		if (check_valid_map(sbi, segno, off) == 0)
+-- 
+2.15.0
+

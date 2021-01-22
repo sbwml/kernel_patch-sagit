@@ -1,0 +1,87 @@
+From 4f60e81f29ced0a80a2f5e5764469563f7658a4d Mon Sep 17 00:00:00 2001
+From: Deepak Kumar <dkumar@codeaurora.org>
+Date: Tue, 12 Sep 2017 10:35:49 +0530
+Subject: [PATCH 037/420] Revert "msm: kgsl: Do not memset pages to zero while
+ adding to pool"
+
+This reverts commit 90d6246fca5f288606551c5d02af920bfeb05b9b.
+
+To address the launch latency issue seen because of increase in
+memory allocation time.
+
+Change-Id: I147ca8607337541b7a29056b4bd1b46aa374c6e3
+Signed-off-by: Deepak Kumar <dkumar@codeaurora.org>
+---
+ drivers/gpu/msm/kgsl_pool.c | 22 ++++++++++++++++------
+ 1 file changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/gpu/msm/kgsl_pool.c b/drivers/gpu/msm/kgsl_pool.c
+index 4a9997b02155..5da8c1dcf5c1 100644
+--- a/drivers/gpu/msm/kgsl_pool.c
++++ b/drivers/gpu/msm/kgsl_pool.c
+@@ -65,19 +65,26 @@ _kgsl_get_pool_from_order(unsigned int order)
+ 
+ /* Map the page into kernel and zero it out */
+ static void
+-_kgsl_pool_zero_page(struct page *p)
++_kgsl_pool_zero_page(struct page *p, unsigned int pool_order)
+ {
+-	void *addr = kmap_atomic(p);
++	int i;
++
++	for (i = 0; i < (1 << pool_order); i++) {
++		struct page *page = nth_page(p, i);
++		void *addr = kmap_atomic(page);
+ 
+-	memset(addr, 0, PAGE_SIZE);
+-	dmac_flush_range(addr, addr + PAGE_SIZE);
+-	kunmap_atomic(addr);
++		memset(addr, 0, PAGE_SIZE);
++		dmac_flush_range(addr, addr + PAGE_SIZE);
++		kunmap_atomic(addr);
++	}
+ }
+ 
+ /* Add a page to specified pool */
+ static void
+ _kgsl_pool_add_page(struct kgsl_page_pool *pool, struct page *p)
+ {
++	_kgsl_pool_zero_page(p, pool->pool_order);
++
+ 	spin_lock(&pool->list_lock);
+ 	list_add_tail(&p->lru, &pool->page_list);
+ 	pool->page_count++;
+@@ -322,6 +329,7 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
+ 			} else
+ 				return -ENOMEM;
+ 		}
++		_kgsl_pool_zero_page(page, order);
+ 		goto done;
+ 	}
+ 
+@@ -341,6 +349,7 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
+ 			page = alloc_pages(gfp_mask, order);
+ 			if (page == NULL)
+ 				return -ENOMEM;
++			_kgsl_pool_zero_page(page, order);
+ 			goto done;
+ 		}
+ 	}
+@@ -370,12 +379,13 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
+ 			} else
+ 				return -ENOMEM;
+ 		}
++
++		_kgsl_pool_zero_page(page, order);
+ 	}
+ 
+ done:
+ 	for (j = 0; j < (*page_size >> PAGE_SHIFT); j++) {
+ 		p = nth_page(page, j);
+-		_kgsl_pool_zero_page(p);
+ 		pages[pcount] = p;
+ 		pcount++;
+ 	}
+-- 
+2.15.0
+

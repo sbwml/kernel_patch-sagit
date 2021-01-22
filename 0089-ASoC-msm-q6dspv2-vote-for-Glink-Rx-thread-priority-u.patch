@@ -1,0 +1,35 @@
+From a1f88625a5d40c47ad4f6b7051a989e83facf948 Mon Sep 17 00:00:00 2001
+From: Banajit Goswami <bgoswami@codeaurora.org>
+Date: Tue, 23 May 2017 01:02:50 -0700
+Subject: [PATCH 089/420] ASoC: msm: q6dspv2: vote for Glink Rx thread priority
+ upgrade
+
+For Low-latency audio playback usecase, vote for a priority
+upgrade for Glink Rx thread, to avoid any performance issue.
+
+Bug: 38234822
+Change-Id: I8332c80eedd7325700e695f341fc4b92f65fd77c
+Signed-off-by: Banajit Goswami <bgoswami@codeaurora.org>
+---
+ sound/soc/msm/qdsp6v2/msm-pcm-q6-v2.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/sound/soc/msm/qdsp6v2/msm-pcm-q6-v2.c b/sound/soc/msm/qdsp6v2/msm-pcm-q6-v2.c
+index c1ef60bd8cba..487aaf2390c0 100644
+--- a/sound/soc/msm/qdsp6v2/msm-pcm-q6-v2.c
++++ b/sound/soc/msm/qdsp6v2/msm-pcm-q6-v2.c
+@@ -768,6 +768,11 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
+ 	    (pdata->perf_mode == LOW_LATENCY_PCM_MODE))
+ 		apr_start_rx_rt(prtd->audio_client->apr);
+ 
++	/* Vote to update the Rx thread priority to RT Thread for playback */
++	if ((substream->stream == SNDRV_PCM_STREAM_PLAYBACK) &&
++	    (pdata->perf_mode == LOW_LATENCY_PCM_MODE))
++		apr_start_rx_rt(prtd->audio_client->apr);
++
+ 	return 0;
+ }
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,65 @@
+From a025ad39a0efe4ff3cf5038d2409f2b61cbedada Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 20:36:22 -0700
+Subject: [PATCH 028/420] msm: qdsp6v2: fix inconsistent spin_lock
+
+sound/soc/msm/qdsp6v2/msm-lsm-client.c:334 lsm_event_handler() warn:
+inconsistent returns 'spin_lock:&prtd->event_lock'
+
+sound/soc/msm/qdsp6v2/msm-lsm-client.c:1635 msm_lsm_ioctl_compat() warn:
+inconsistent returns 'mutex:&prtd->lsm_api_lock'
+
+sound/soc/msm/qdsp6v2/msm-lsm-client.c:1914 msm_lsm_ioctl() warn:
+inconsistent returns 'mutex:&prtd->lsm_api_lock'
+
+Change-Id: Id1f754702a56ef21952c7f7bc8cf3ebd0a0ebefa
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ sound/soc/msm/qdsp6v2/msm-lsm-client.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/msm/qdsp6v2/msm-lsm-client.c b/sound/soc/msm/qdsp6v2/msm-lsm-client.c
+index 9b0918cc579f..b7e69771e991 100644
+--- a/sound/soc/msm/qdsp6v2/msm-lsm-client.c
++++ b/sound/soc/msm/qdsp6v2/msm-lsm-client.c
+@@ -325,6 +325,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
+ 		if (!prtd->event_status) {
+ 			dev_err(rtd->dev, "%s: no memory for event status\n",
+ 				__func__);
++			spin_unlock_irqrestore(&prtd->event_lock, flags);
+ 			return;
+ 		}
+ 		/*
+@@ -1395,7 +1396,8 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
+ 		if (copy_from_user(&userarg32, arg, sizeof(userarg32))) {
+ 			dev_err(rtd->dev, "%s: err copyuser ioctl %s\n",
+ 				__func__, "SNDRV_LSM_EVENT_STATUS_V3_32");
+-			return -EFAULT;
++			err = -EFAULT;
++			goto done;
+ 		}
+ 
+ 		if (userarg32.payload_size >
+@@ -1403,7 +1405,8 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
+ 			pr_err("%s: payload_size %d is invalid, max allowed = %d\n",
+ 				__func__, userarg32.payload_size,
+ 				LISTEN_MAX_STATUS_PAYLOAD_SIZE);
+-			return -EINVAL;
++			err = -EINVAL;
++			goto done;
+ 		}
+ 
+ 		size = sizeof(*user) + userarg32.payload_size;
+@@ -1412,7 +1415,8 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
+ 			dev_err(rtd->dev,
+ 				"%s: Allocation failed event status size %d\n",
+ 				__func__, size);
+-			return -EFAULT;
++			err = -EFAULT;
++			goto done;
+ 		}
+ 		cmd = SNDRV_LSM_EVENT_STATUS_V3;
+ 		user->payload_size = userarg32.payload_size;
+-- 
+2.15.0
+

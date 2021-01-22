@@ -1,0 +1,33 @@
+From f251464c9978017cc912ec55c83920f68f11fb0d Mon Sep 17 00:00:00 2001
+From: Maulik Shah <mkshah@codeaurora.org>
+Date: Thu, 30 Nov 2017 17:09:29 +0530
+Subject: [PATCH 046/420] cpuidle: lpm-levels: Do not predict LPM for isolated
+ cpus
+
+Prediction can select shallower low power mode for isolated
+cpu based on historical data.
+
+Do not predict LPMs for isolated cpus.
+
+Change-Id: I998008ef3c578c1dccfacae8513a15dfbe397e16
+Signed-off-by: Maulik Shah <mkshah@codeaurora.org>
+---
+ drivers/cpuidle/lpm-levels.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/cpuidle/lpm-levels.c b/drivers/cpuidle/lpm-levels.c
+index 324cce5d7354..37acbd6ffd3b 100644
+--- a/drivers/cpuidle/lpm-levels.c
++++ b/drivers/cpuidle/lpm-levels.c
+@@ -740,7 +740,7 @@ static int cpu_power_select(struct cpuidle_device *dev,
+ 				next_wakeup_us = next_event_us - lvl_latency_us;
+ 		}
+ 
+-		if (!i) {
++		if (!i && !cpu_isolated(dev->cpu)) {
+ 			/*
+ 			 * If the next_wake_us itself is not sufficient for
+ 			 * deeper low power modes than clock gating do not
+-- 
+2.15.0
+

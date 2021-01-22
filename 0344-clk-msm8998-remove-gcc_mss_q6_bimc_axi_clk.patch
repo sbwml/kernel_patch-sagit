@@ -1,0 +1,172 @@
+From 8b4c8294c4a35366a29dc52fb351bbc9e1d10c45 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Sun, 17 Jun 2018 07:42:26 +0000
+Subject: [PATCH 344/420] clk: msm8998: remove gcc_mss_q6_bimc_axi_clk
+
+Fails to enable and will generate a warning at init.
+
+[    0.422228] gcc_mss_q6_bimc_axi_clk: status stuck off
+[    0.422322] ------------[ cut here ]------------
+[    0.422346] WARNING: at
+/home/aicpdevs/lineage-15.1/kernel/xiaomi/msm8998/drivers/clk/msm/clock-local2.c:670
+[    0.422359]
+[    0.422381] CPU: 4 PID: 6 Comm: kworker/u16:0 Not tainted
+4.4.78-perf+ #31
+[    0.422397] Hardware name: Qualcomm Technologies, Inc. MSM 8998 v2.1
+MTP (DT)
+[    0.422432] Workqueue: deferwq deferred_probe_work_func
+[    0.422458] task: fffffffb76524380 ti: fffffffb76558000 task.ti:
+fffffffb76558000
+[    0.422482] PC is at branch_clk_halt_check+0x114/0x164
+[    0.422500] LR is at branch_clk_halt_check+0x114/0x164
+[    0.422518] pc : [<ffffff91afb14500>] lr : [<ffffff91afb14500>]
+pstate: 600000c5
+[    0.422532] sp : fffffffb7655b9c0
+[    0.422546] x29: fffffffb7655b9c0 x28: fffffffb76548100
+[    0.422577] x27: fffffffb76416000 x26: 00000000000000a0
+[    0.422605] x25: ffffff91b0f53078 x24: ffffff91b05df050
+[    0.422632] x23: 00000000d0000000 x22: 0000000080000000
+[    0.422658] x21: ffffff8008e8a040 x20: 0000000000000000
+[    0.422684] x19: 0000000000000000 x18: fffffffb76507930
+[    0.422710] x17: 0000000000000001 x16: 0000000000000007
+[    0.422736] x15: 0000000000000001 x14: 0ffffffffffffffe
+[    0.422761] x13: 0000000000000018 x12: 7aadf1b97e533910
+[    0.422787] x11: 0000000000000006 x10: fffffffb7655b7a0
+[    0.422813] x9 : 00000000ffffffd0 x8 : ffffff91af0fb3ac
+[    0.422838] x7 : ffffff91b0e4ce60 x6 : 0000000000000038
+[    0.422863] x5 : 0000000000000000 x4 : 0000000000000000
+[    0.422889] x3 : 0000000000000000 x2 : 7aadf1b97e533910
+[    0.422914] x1 : 7aadf1b97e533910 x0 : 0000000000000029
+[    0.422941] \x0aPC: 0xffffff91afb144c0:
+[    0.422958] 44c0  a94153f3 a9425bf5 a94363f7 a8c57bfd d65f03c0
+aa1903e0 d2800001 94001d1e
+[    0.423037] 44e0  b4000219 b140073f 540001c8 f9400b21 b0005be0
+aa1803e2 913dc000 97d1c0da
+[    0.423114] 4500  d4210000 12800da0 f94023f9 a94153f3 a9425bf5
+a94363f7 a8c57bfd d65f03c0
+[    0.423190] 4520  90004d81 91142021 17fffff2 b0002fc1 b0005be0
+91262021 913e2000 91010021
+[    0.423269] \x0aLR: 0xffffff91afb144c0:
+[    0.423284] 44c0  a94153f3 a9425bf5 a94363f7 a8c57bfd d65f03c0
+aa1903e0 d2800001 94001d1e
+[    0.423361] 44e0  b4000219 b140073f 540001c8 f9400b21 b0005be0
+aa1803e2 913dc000 97d1c0da
+[    0.423437] 4500  d4210000 12800da0 f94023f9 a94153f3 a9425bf5
+a94363f7 a8c57bfd d65f03c0
+[    0.423512] 4520  90004d81 91142021 17fffff2 b0002fc1 b0005be0
+91262021 913e2000 91010021
+[    0.423590] \x0aSP: 0xfffffffb7655b980:
+[    0.423605] b980  afb14500 ffffff91 7655b9c0 fffffffb afb14500
+ffffff91 600000c5 00000000
+[    0.423681] b9a0  b0f53078 ffffff91 00000000 00000000 ffffffff
+ffffffff b0e4ce60 ffffff91
+[    0.423757] b9c0  7655ba10 fffffffb afb156bc ffffff91 b0f53070
+ffffff91 b13cc158 ffffff91
+[    0.423833] b9e0  b0f53078 ffffff91 00000040 00000000 b0692df0
+ffffff91 00000000 00000000
+[    0.423908]
+[    0.423941] ---[ end trace 4d957e9333d6dbf1 ]---
+[    0.423955] Call trace:
+[    0.423973] Exception stack(0xfffffffb7655b7d0 to 0xfffffffb7655b900)
+[    0.423993] b7c0:                                   0000000000000000
+0000008000000000
+[    0.424015] b7e0: fffffffb7655b9c0 ffffff91afb14500 00000000600000c5
+00000000000000c0
+[    0.424035] b800: ffffff91b04cde08 ffffff91b0e26b98 0000000000000000
+ffffff91b1035148
+[    0.424055] b820: fffffffb7655b830 ffffff91aef0cfcc fffffffb7655b8d0
+ffffff91aef0d354
+[    0.424076] b840: ffffff91b0e06000 ffffff91aef0d31c ffffff8008e8a040
+0000000080000000
+[    0.424095] b860: 00000000d0000000 ffffff91b05df050 ffffff91b0f53078
+00000000000000a0
+[    0.424115] b880: fffffffb76416000 7aadf1b97e533910 0000000000000029
+7aadf1b97e533910
+[    0.424134] b8a0: 7aadf1b97e533910 0000000000000000 0000000000000000
+0000000000000000
+[    0.424154] b8c0: 0000000000000038 ffffff91b0e4ce60 ffffff91af0fb3ac
+00000000ffffffd0
+[    0.424173] b8e0: fffffffb7655b7a0 0000000000000006 7aadf1b97e533910
+0000000000000018
+[    0.424193] [<ffffff91afb14500>] branch_clk_halt_check+0x114/0x164
+[    0.424214] [<ffffff91afb156bc>] branch_clk_enable+0x80/0xe4
+[    0.424237] [<ffffff91afb11360>] clk_enable+0x90/0x1cc
+[    0.424259] [<ffffff91afb11fbc>] __handoff_clk.part.3+0x290/0x318
+[    0.424280] [<ffffff91afb12070>] __handoff_clk+0x2c/0x5c
+[    0.424301] [<ffffff91afb12474>] msm_clock_register+0x130/0x2c4
+[    0.424322] [<ffffff91afb12684>] of_msm_clock_register+0x7c/0xa4
+[    0.424345] [<ffffff91afb1c154>] msm_gcc_8998_probe+0x1a0/0x380
+[    0.424366] [<ffffff91af452e5c>] platform_drv_probe+0x40/0xc4
+[    0.424385] [<ffffff91af4514ec>] driver_probe_device+0x1f0/0x2ec
+[    0.424403] [<ffffff91af45170c>] __device_attach_driver+0x84/0xb0
+[    0.424420] [<ffffff91af44f9d4>] bus_for_each_drv+0x60/0xb0
+[    0.424438] [<ffffff91af4511e8>] __device_attach+0xd0/0x124
+[    0.424456] [<ffffff91af451770>] device_initial_probe+0x10/0x18
+[    0.424473] [<ffffff91af44fc98>] bus_probe_device+0x90/0x98
+[    0.424491] [<ffffff91af450b94>] deferred_probe_work_func+0x78/0xac
+[    0.424515] [<ffffff91aeeba2e8>] process_one_work+0x144/0x440
+[    0.424536] [<ffffff91aeeba720>] worker_thread+0x13c/0x440
+[    0.424555] [<ffffff91aeec0a40>] kthread+0xec/0x100
+[    0.424575] [<ffffff91aee82ef0>] ret_from_fork+0x10/0x20
+[    0.424633] failed to enable always-on clock gcc_mss_q6_bimc_axi_clk
+
+Change-Id: I449d2876d12e065127c13380eaf36a1ddb5de79d
+---
+ drivers/clk/msm/clock-gcc-8998.c            | 14 --------------
+ include/dt-bindings/clock/msm-clocks-8998.h |  1 -
+ 2 files changed, 15 deletions(-)
+
+diff --git a/drivers/clk/msm/clock-gcc-8998.c b/drivers/clk/msm/clock-gcc-8998.c
+index c13c7c660ede..c6e08109abc6 100644
+--- a/drivers/clk/msm/clock-gcc-8998.c
++++ b/drivers/clk/msm/clock-gcc-8998.c
+@@ -2195,18 +2195,6 @@ static struct branch_clk gcc_mss_cfg_ahb_clk = {
+ 	},
+ };
+ 
+-static struct branch_clk gcc_mss_q6_bimc_axi_clk = {
+-	.cbcr_reg = GCC_MSS_Q6_BIMC_AXI_CBCR,
+-	.has_sibling = 1,
+-	.base = &virt_base,
+-	.c = {
+-		.dbg_name = "gcc_mss_q6_bimc_axi_clk",
+-		.always_on = true,
+-		.ops = &clk_ops_branch,
+-		CLK_INIT(gcc_mss_q6_bimc_axi_clk.c),
+-	},
+-};
+-
+ static struct branch_clk gcc_mss_mnoc_bimc_axi_clk = {
+ 	.cbcr_reg = GCC_MSS_MNOC_BIMC_AXI_CBCR,
+ 	.has_sibling = 1,
+@@ -2394,7 +2382,6 @@ static struct mux_clk gcc_debug_mux = {
+ 		{ &gcc_dcc_ahb_clk.c, 0x0119 },
+ 		{ &ipa_clk.c, 0x011b },
+ 		{ &gcc_mss_cfg_ahb_clk.c, 0x011f },
+-		{ &gcc_mss_q6_bimc_axi_clk.c, 0x0124 },
+ 		{ &gcc_mss_mnoc_bimc_axi_clk.c, 0x0120 },
+ 		{ &gcc_mss_snoc_axi_clk.c, 0x0123 },
+ 		{ &gcc_gpu_cfg_ahb_clk.c, 0x013b },
+@@ -2634,7 +2621,6 @@ static struct clk_lookup msm_clocks_gcc_8998[] = {
+ 	CLK_LIST(gcc_prng_ahb_clk),
+ 	CLK_LIST(gcc_boot_rom_ahb_clk),
+ 	CLK_LIST(gcc_mss_cfg_ahb_clk),
+-	CLK_LIST(gcc_mss_q6_bimc_axi_clk),
+ 	CLK_LIST(gcc_mss_mnoc_bimc_axi_clk),
+ 	CLK_LIST(gcc_mss_snoc_axi_clk),
+ 	CLK_LIST(gcc_hdmi_clkref_clk),
+diff --git a/include/dt-bindings/clock/msm-clocks-8998.h b/include/dt-bindings/clock/msm-clocks-8998.h
+index 67e47c46e09a..3d8e5663d723 100644
+--- a/include/dt-bindings/clock/msm-clocks-8998.h
++++ b/include/dt-bindings/clock/msm-clocks-8998.h
+@@ -258,7 +258,6 @@
+ #define clk_hlos1_vote_lpass_core_smmu_clk	0x3aaa1743
+ #define clk_hlos1_vote_lpass_adsp_smmu_clk	0xc76f702f
+ #define clk_gcc_mss_cfg_ahb_clk			0x111cde81
+-#define clk_gcc_mss_q6_bimc_axi_clk		0x67544d62
+ #define clk_gcc_mss_mnoc_bimc_axi_clk		0xf665d03f
+ #define clk_gpll0_out_msscc			0x7d794829
+ #define clk_gcc_mss_snoc_axi_clk		0x0e71de85
+-- 
+2.15.0
+

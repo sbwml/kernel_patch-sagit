@@ -1,0 +1,41 @@
+From 770471fb56bab4e65e9566a4a7ee23b36798c9fa Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 10 Apr 2020 18:07:20 +0800
+Subject: [PATCH 269/420] f2fs: fix to handle error path of
+ f2fs_ra_meta_pages()
+
+In f2fs_ra_meta_pages(), if f2fs_submit_page_bio() failed, we need to
+unlock page, fix it.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/checkpoint.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index c1899cb10558..f6d08d9b7b10 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -224,6 +224,7 @@ int f2fs_ra_meta_pages(struct f2fs_sb_info *sbi, block_t start, int nrpages,
+ 		.is_por = (type == META_POR),
+ 	};
+ 	struct blk_plug plug;
++	int err;
+ 
+ 	if (unlikely(type == META_POR))
+ 		fio.op_flags &= ~REQ_META;
+@@ -267,8 +268,8 @@ int f2fs_ra_meta_pages(struct f2fs_sb_info *sbi, block_t start, int nrpages,
+ 		}
+ 
+ 		fio.page = page;
+-		f2fs_submit_page_bio(&fio);
+-		f2fs_put_page(page, 0);
++		err = f2fs_submit_page_bio(&fio);
++		f2fs_put_page(page, err ? 1 : 0);
+ 	}
+ out:
+ 	blk_finish_plug(&plug);
+-- 
+2.15.0
+

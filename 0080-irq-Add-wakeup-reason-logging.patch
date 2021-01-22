@@ -1,0 +1,37 @@
+From 160d487407e0bf014b9c28dd3913eaa5584176ca Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Wed, 15 Jun 2016 15:19:55 -0700
+Subject: [PATCH 080/420] irq: Add wakeup reason logging
+
+log wakeup reason for irq
+
+Bug: 28852315
+Change-Id: Iad9cf7423e51441c81f52fd94dd6347de6709262
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ drivers/irqchip/irq-gic-v3.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/irqchip/irq-gic-v3.c b/drivers/irqchip/irq-gic-v3.c
+index 2b8b0e4036b5..058b65cbfdd0 100644
+--- a/drivers/irqchip/irq-gic-v3.c
++++ b/drivers/irqchip/irq-gic-v3.c
+@@ -25,6 +25,7 @@
+ #include <linux/percpu.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/wakeup_reason.h>
+ 
+ #include <linux/irqchip.h>
+ #include <linux/irqchip/arm-gic-v3.h>
+@@ -442,6 +443,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
+ 		else if (desc->action && desc->action->name)
+ 			name = desc->action->name;
+ 
++		log_base_wakeup_reason(irq);
+ 		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+ 	}
+ }
+-- 
+2.15.0
+

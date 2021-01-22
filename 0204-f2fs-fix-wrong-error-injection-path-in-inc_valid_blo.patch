@@ -1,0 +1,41 @@
+From 498652828d1dabdfa4e70dfd5d4565e108d433ec Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 23 Aug 2019 17:58:34 +0800
+Subject: [PATCH 204/420] f2fs: fix wrong error injection path in
+ inc_valid_block_count()
+
+If FAULT_BLOCK type error injection is on, in inc_valid_block_count()
+we may decrease sbi->alloc_valid_block_count percpu stat count
+incorrectly, fix it.
+
+Fixes: 36b877af7992 ("f2fs: Keep alloc_valid_block_count in sync")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 157b729729a5..2a0fa29aba8b 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1825,7 +1825,7 @@ static inline int inc_valid_block_count(struct f2fs_sb_info *sbi,
+ 	if (time_to_inject(sbi, FAULT_BLOCK)) {
+ 		f2fs_show_injection_info(FAULT_BLOCK);
+ 		release = *count;
+-		goto enospc;
++		goto release_quota;
+ 	}
+ 
+ 	/*
+@@ -1870,6 +1870,7 @@ static inline int inc_valid_block_count(struct f2fs_sb_info *sbi,
+ 
+ enospc:
+ 	percpu_counter_sub(&sbi->alloc_valid_block_count, release);
++release_quota:
+ 	dquot_release_reservation_block(inode, release);
+ 	return -ENOSPC;
+ }
+-- 
+2.15.0
+

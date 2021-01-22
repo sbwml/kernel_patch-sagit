@@ -1,0 +1,42 @@
+From adceec6c367df8ad3474e9de90d2aba15316247e Mon Sep 17 00:00:00 2001
+From: Chris Fries <cfries@google.com>
+Date: Thu, 26 Apr 2018 10:49:23 -0500
+Subject: [PATCH 352/420] {chiron,sagit}_defconfig: disable BRIDGE_NETFILTER
+
+CONFIG_BRIDGE_NETFILTER is default=m and we don't use it.
+
+Bug: 78574169
+Change-Id: Ie8aa5e2a7adc64679e142f931b8da03999b08a43
+Signed-off-by: Chris Fries <cfries@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 572bbb473efe..40e06885c35f 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -114,6 +114,7 @@ CONFIG_IPV6_VTI=y
+ CONFIG_IPV6_MULTIPLE_TABLES=y
+ CONFIG_IPV6_SUBTREES=y
+ CONFIG_NETFILTER=y
++# CONFIG_BRIDGE_NETFILTER is not set
+ CONFIG_NF_CONNTRACK=y
+ CONFIG_NF_CONNTRACK_SECMARK=y
+ CONFIG_NF_CONNTRACK_EVENTS=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 572bbb473efe..40e06885c35f 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -114,6 +114,7 @@ CONFIG_IPV6_VTI=y
+ CONFIG_IPV6_MULTIPLE_TABLES=y
+ CONFIG_IPV6_SUBTREES=y
+ CONFIG_NETFILTER=y
++# CONFIG_BRIDGE_NETFILTER is not set
+ CONFIG_NF_CONNTRACK=y
+ CONFIG_NF_CONNTRACK_SECMARK=y
+ CONFIG_NF_CONNTRACK_EVENTS=y
+-- 
+2.15.0
+

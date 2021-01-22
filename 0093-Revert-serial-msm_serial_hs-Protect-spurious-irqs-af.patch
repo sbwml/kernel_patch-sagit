@@ -1,0 +1,58 @@
+From 8af93c7ad457cfb4dda7e76276d73b70770b4b15 Mon Sep 17 00:00:00 2001
+From: Petri Gynther <pgynther@google.com>
+Date: Thu, 31 May 2018 17:57:30 +0000
+Subject: [PATCH 093/420] Revert "serial: msm_serial_hs: Protect spurious irqs
+ after wakeup irq enablement"
+
+This reverts commit 545339b82c446a0509e775722b675115241c9f57.
+
+This workaround is no longer needed because pinctrl IRQ chip driver has been fixed
+to clear spurious interrupts:
+https://partner-android-review.googlesource.com/c/kernel/private/msm-google/+/1070357/
+
+Bug: 68261352
+Bug: 77429706
+Change-Id: I66400003a04f50f22033f80fe31ef81ce622cfc1
+Signed-off-by: Petri Gynther <pgynther@google.com>
+---
+ drivers/tty/serial/msm_serial_hs.c | 14 +-------------
+ 1 file changed, 1 insertion(+), 13 deletions(-)
+
+diff --git a/drivers/tty/serial/msm_serial_hs.c b/drivers/tty/serial/msm_serial_hs.c
+index abf5bf8978d3..fd191761bfa1 100644
+--- a/drivers/tty/serial/msm_serial_hs.c
++++ b/drivers/tty/serial/msm_serial_hs.c
+@@ -2272,18 +2272,10 @@ void enable_wakeup_interrupt(struct msm_hs_port *msm_uport)
+ 	if (!(msm_uport->wakeup.enabled)) {
+ 		spin_lock_irqsave(&uport->lock, flags);
+ 		msm_uport->wakeup.ignore = 1;
+-		/* Keep this disabled for 1 msec */
+-		msm_uport->wakeup.enabled = false;
++		msm_uport->wakeup.enabled = true;
+ 		spin_unlock_irqrestore(&uport->lock, flags);
+ 		disable_irq(uport->irq);
+ 		enable_irq(msm_uport->wakeup.irq);
+-
+-		/* Add delay before enabling wakeup irq */
+-		udelay(1000);
+-		spin_lock_irqsave(&uport->lock, flags);
+-		if (msm_uport->wakeup.ignore == 1)
+-			msm_uport->wakeup.enabled = true;
+-		spin_unlock_irqrestore(&uport->lock, flags);
+ 	} else {
+ 		MSM_HS_WARN("%s:Wake up IRQ already enabled", __func__);
+ 	}
+@@ -2470,10 +2462,6 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
+ 	struct uart_port *uport = &msm_uport->uport;
+ 	struct tty_struct *tty = NULL;
+ 
+-	/* Do not serve ISR if this flag is false */
+-	if (!msm_uport->wakeup.enabled)
+-		return IRQ_HANDLED;
+-
+ 	spin_lock_irqsave(&uport->lock, flags);
+ 
+ 	if (msm_uport->wakeup.ignore)
+-- 
+2.15.0
+

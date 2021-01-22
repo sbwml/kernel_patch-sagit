@@ -1,0 +1,1190 @@
+From 83b7d2af252a06daf7fbbb6561e46907153e2515 Mon Sep 17 00:00:00 2001
+From: Iliyan Malchev <malchev@google.com>
+Date: Fri, 20 Feb 2015 11:01:24 -0800
+Subject: [PATCH 077/420] BACKPORT: PM: wakeup_reason: add functions to query
+ and clear wakeup reasons
+
+The query results are valid until the next PM_SUSPEND_PREPARE.
+
+(cherry picked from commit 76543de14f860ab713114621cb62e8006b7ca952)
+Change-Id: I6bc2bd47c830262319576a001d39ac9a994916cf
+Signed-off-by: Iliyan Malchev <malchev@google.com>
+---
+ drivers/irqchip/irq-gic.c          |   9 +-
+ drivers/pinctrl/qcom/pinctrl-msm.c |  10 +-
+ drivers/spmi/spmi-pmic-arb.c       |   9 +-
+ drivers/spmi/virtspmi-pmic-arb.c   |   9 +-
+ include/linux/irq.h                |  18 +-
+ include/linux/irqdesc.h            |   4 +-
+ include/linux/irqhandler.h         |   2 +-
+ include/linux/wakeup_reason.h      |  69 ++++-
+ kernel/irq/chip.c                  |  47 +++-
+ kernel/irq/handle.c                |   3 +-
+ kernel/irq/irqdesc.c               |  16 +-
+ kernel/power/suspend.c             |   2 +
+ kernel/power/wakeup_reason.c       | 512 ++++++++++++++++++++++++++++++++-----
+ 13 files changed, 599 insertions(+), 111 deletions(-)
+
+diff --git a/drivers/irqchip/irq-gic.c b/drivers/irqchip/irq-gic.c
+index 25b5a2427705..db27aa9c7e8d 100644
+--- a/drivers/irqchip/irq-gic.c
++++ b/drivers/irqchip/irq-gic.c
+@@ -42,7 +42,7 @@
+ #include <linux/irqchip/chained_irq.h>
+ #include <linux/irqchip/arm-gic.h>
+ #include <linux/syscore_ops.h>
+-
++#include <linux/wakeup_reason.h>
+ #include <asm/cputype.h>
+ #include <asm/irq.h>
+ #include <asm/exception.h>
+@@ -544,12 +544,13 @@ static void __exception_irq_entry gic_handle_irq(struct pt_regs *regs)
+ 	} while (1);
+ }
+ 
+-static void gic_handle_cascade_irq(struct irq_desc *desc)
++static bool gic_handle_cascade_irq(struct irq_desc *desc)
+ {
+ 	struct gic_chip_data *chip_data = irq_desc_get_handler_data(desc);
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
+ 	unsigned int cascade_irq, gic_irq;
+ 	unsigned long status;
++	int handled = false;
+ 
+ 	chained_irq_enter(chip, desc);
+ 
+@@ -565,10 +566,12 @@ static void gic_handle_cascade_irq(struct irq_desc *desc)
+ 	if (unlikely(gic_irq < 32 || gic_irq > 1020))
+ 		handle_bad_irq(desc);
+ 	else
+-		generic_handle_irq(cascade_irq);
++		handled = generic_handle_irq(cascade_irq);
++
+ 
+  out:
+ 	chained_irq_exit(chip, desc);
++	return handled == true;
+ }
+ 
+ static struct irq_chip gic_chip = {
+diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
+index 9cbd2ab13877..1a25430447f4 100644
+--- a/drivers/pinctrl/qcom/pinctrl-msm.c
++++ b/drivers/pinctrl/qcom/pinctrl-msm.c
+@@ -805,7 +805,7 @@ static struct irq_chip msm_gpio_irq_chip = {
+ 	.irq_set_wake   = msm_gpio_irq_set_wake,
+ };
+ 
+-static void msm_gpio_irq_handler(struct irq_desc *desc)
++static bool msm_gpio_irq_handler(struct irq_desc *desc)
+ {
+ 	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
+ 	const struct msm_pingroup *g;
+@@ -815,6 +815,7 @@ static void msm_gpio_irq_handler(struct irq_desc *desc)
+ 	int handled = 0;
+ 	u32 val;
+ 	int i;
++	bool ret;
+ 
+ 	chained_irq_enter(chip, desc);
+ 
+@@ -827,16 +828,17 @@ static void msm_gpio_irq_handler(struct irq_desc *desc)
+ 		val = readl(pctrl->regs + g->intr_status_reg);
+ 		if (val & BIT(g->intr_status_bit)) {
+ 			irq_pin = irq_find_mapping(gc->irqdomain, i);
+-			generic_handle_irq(irq_pin);
+-			handled++;
++			handled += generic_handle_irq(irq_pin);
+ 		}
+ 	}
+ 
++	ret = (handled != 0);
+ 	/* No interrupts were flagged */
+ 	if (handled == 0)
+-		handle_bad_irq(desc);
++		ret = handle_bad_irq(desc);
+ 
+ 	chained_irq_exit(chip, desc);
++	return ret;
+ }
+ 
+ /*
+diff --git a/drivers/spmi/spmi-pmic-arb.c b/drivers/spmi/spmi-pmic-arb.c
+index 4e4b39c26e89..1bf9c4daec1b 100644
+--- a/drivers/spmi/spmi-pmic-arb.c
++++ b/drivers/spmi/spmi-pmic-arb.c
+@@ -571,7 +571,7 @@ static void periph_interrupt(struct spmi_pmic_arb *pa, u16 apid, bool show)
+ 	}
+ }
+ 
+-static void __pmic_arb_chained_irq(struct spmi_pmic_arb *pa, bool show)
++static bool __pmic_arb_chained_irq(struct spmi_pmic_arb *pa, bool show)
+ {
+ 	int first = pa->min_apid >> 5;
+ 	int last = pa->max_apid >> 5;
+@@ -624,16 +624,19 @@ static void __pmic_arb_chained_irq(struct spmi_pmic_arb *pa, bool show)
+ 			}
+ 		}
+ 	}
++	return true;
+ }
+ 
+-static void pmic_arb_chained_irq(struct irq_desc *desc)
++static bool pmic_arb_chained_irq(struct irq_desc *desc)
+ {
+ 	struct spmi_pmic_arb *pa = irq_desc_get_handler_data(desc);
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
++	bool ret;
+ 
+ 	chained_irq_enter(chip, desc);
+-	__pmic_arb_chained_irq(pa, false);
++	ret = __pmic_arb_chained_irq(pa, false);
+ 	chained_irq_exit(chip, desc);
++	return ret;
+ }
+ 
+ static void qpnpint_irq_ack(struct irq_data *d)
+diff --git a/drivers/spmi/virtspmi-pmic-arb.c b/drivers/spmi/virtspmi-pmic-arb.c
+index 84e39a73724b..e7ee1b53d451 100644
+--- a/drivers/spmi/virtspmi-pmic-arb.c
++++ b/drivers/spmi/virtspmi-pmic-arb.c
+@@ -423,7 +423,7 @@ static void periph_interrupt(struct vspmi_pmic_arb *pa, u16 apid, bool show)
+ 	}
+ }
+ 
+-static void __pmic_arb_chained_irq(struct vspmi_pmic_arb *pa, bool show)
++static bool __pmic_arb_chained_irq(struct vspmi_pmic_arb *pa, bool show)
+ {
+ 	u32 enable;
+ 	int i;
+@@ -448,16 +448,19 @@ static void __pmic_arb_chained_irq(struct vspmi_pmic_arb *pa, bool show)
+ 			}
+ 		}
+ 	}
++	return true;
+ }
+ 
+-static void pmic_arb_chained_irq(struct irq_desc *desc)
++static bool pmic_arb_chained_irq(struct irq_desc *desc)
+ {
+ 	struct vspmi_pmic_arb *pa = irq_desc_get_handler_data(desc);
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
++	bool ret;
+ 
+ 	chained_irq_enter(chip, desc);
+-	__pmic_arb_chained_irq(pa, false);
++	ret = __pmic_arb_chained_irq(pa, false);
+ 	chained_irq_exit(chip, desc);
++	return ret;
+ }
+ 
+ static void qpnpint_irq_ack(struct irq_data *d)
+diff --git a/include/linux/irq.h b/include/linux/irq.h
+index f653225a896d..8da001eb82aa 100644
+--- a/include/linux/irq.h
++++ b/include/linux/irq.h
+@@ -473,15 +473,15 @@ static inline int irq_set_parent(int irq, int parent_irq)
+  * Built-in IRQ handlers for various IRQ types,
+  * callable via desc->handle_irq()
+  */
+-extern void handle_level_irq(struct irq_desc *desc);
+-extern void handle_fasteoi_irq(struct irq_desc *desc);
+-extern void handle_edge_irq(struct irq_desc *desc);
+-extern void handle_edge_eoi_irq(struct irq_desc *desc);
+-extern void handle_simple_irq(struct irq_desc *desc);
+-extern void handle_percpu_irq(struct irq_desc *desc);
+-extern void handle_percpu_devid_irq(struct irq_desc *desc);
+-extern void handle_bad_irq(struct irq_desc *desc);
+-extern void handle_nested_irq(unsigned int irq);
++extern bool handle_level_irq(struct irq_desc *desc);
++extern bool handle_fasteoi_irq(struct irq_desc *desc);
++extern bool handle_edge_irq(struct irq_desc *desc);
++extern bool handle_edge_eoi_irq(struct irq_desc *desc);
++extern bool handle_simple_irq(struct irq_desc *desc);
++extern bool handle_percpu_irq(struct irq_desc *desc);
++extern bool handle_percpu_devid_irq(struct irq_desc *desc);
++extern bool handle_bad_irq(struct irq_desc *desc);
++extern bool handle_nested_irq(unsigned int irq);
+ 
+ extern int irq_chip_compose_msi_msg(struct irq_data *data, struct msi_msg *msg);
+ #ifdef	CONFIG_IRQ_DOMAIN_HIERARCHY
+diff --git a/include/linux/irqdesc.h b/include/linux/irqdesc.h
+index a587a33363c7..50b55bdfe0bd 100644
+--- a/include/linux/irqdesc.h
++++ b/include/linux/irqdesc.h
+@@ -135,9 +135,9 @@ static inline struct msi_desc *irq_desc_get_msi_desc(struct irq_desc *desc)
+  * Architectures call this to let the generic IRQ layer
+  * handle an interrupt.
+  */
+-static inline void generic_handle_irq_desc(struct irq_desc *desc)
++static inline bool generic_handle_irq_desc(struct irq_desc *desc)
+ {
+-	desc->handle_irq(desc);
++	return desc->handle_irq(desc);
+ }
+ 
+ int generic_handle_irq(unsigned int irq);
+diff --git a/include/linux/irqhandler.h b/include/linux/irqhandler.h
+index 661bed0ed1f3..b31ab4b59c16 100644
+--- a/include/linux/irqhandler.h
++++ b/include/linux/irqhandler.h
+@@ -8,7 +8,7 @@
+ 
+ struct irq_desc;
+ struct irq_data;
+-typedef	void (*irq_flow_handler_t)(struct irq_desc *desc);
++typedef	bool (*irq_flow_handler_t)(struct irq_desc *desc);
+ typedef	void (*irq_preflow_handler_t)(struct irq_data *data);
+ 
+ #endif
+diff --git a/include/linux/wakeup_reason.h b/include/linux/wakeup_reason.h
+index d84d8c301546..a26b1c998139 100644
+--- a/include/linux/wakeup_reason.h
++++ b/include/linux/wakeup_reason.h
+@@ -18,15 +18,72 @@
+ #ifndef _LINUX_WAKEUP_REASON_H
+ #define _LINUX_WAKEUP_REASON_H
+ 
++#include <linux/types.h>
++#include <linux/completion.h>
++
+ #define MAX_SUSPEND_ABORT_LEN 256
+ 
+-void log_wakeup_reason(int irq);
+-int check_wakeup_reason(int irq);
++struct wakeup_irq_node {
++	/* @leaf is a linked list of all leaf nodes in the interrupts trees.
++	 */
++	struct list_head next;
++	/* @irq: IRQ number of this node.
++	 */
++	int irq;
++	struct irq_desc *desc;
++
++	/* @siblings contains the list of irq nodes at the same depth; at a
++	 * depth of zero, this is the list of base wakeup interrupts.
++	 */
++	struct list_head siblings;
++	/* @parent: only one node in a siblings list has a pointer to the
++	 * parent; that node is the head of the list of siblings.
++	 */
++	struct wakeup_irq_node *parent;
++	/* @child: any node can have one child
++	 */
++	struct wakeup_irq_node *child;
++	/* @handled: this flag is set to true when the interrupt handler (one of
++	 * handle_.*_irq in kernel/irq/handle.c) for this node gets called; it is set
++	 * to false otherwise.  We use this flag to determine whether a subtree rooted
++	 * at a node has been handled.  When all trees rooted at
++	 * base-wakeup-interrupt nodes have been handled, we stop logging
++	 * potential wakeup interrupts, and construct the list of actual
++	 * wakeups from the leaves of these trees.
++	 */
++	bool handled;
++};
++
++/* Called in the resume path, with interrupts and nonboot cpus disabled; on
++ * need for a spinlock.
++ */
++static inline void start_logging_wakeup_reasons(void)
++{
++	extern bool log_wakeups;
++	extern struct completion wakeups_completion;
++	log_wakeups = true;
++	init_completion(&wakeups_completion);
++}
++
++static inline bool logging_wakeup_reasons(void)
++{
++	extern bool log_wakeups;
++	return ACCESS_ONCE(log_wakeups);
++}
++
++void log_base_wakeup_reason(int irq);
+ 
+-#ifdef CONFIG_SUSPEND
+ void log_suspend_abort_reason(const char *fmt, ...);
+-#else
+-static inline void log_suspend_abort_reason(const char *fmt, ...) { }
+-#endif
++
++bool log_possible_wakeup_reason(int irq,
++			struct irq_desc *desc,
++			bool (*handler)(struct irq_desc *));
++
++int check_wakeup_reason(int irq);
++
++const struct list_head*
++get_wakeup_reasons(unsigned long timeout, struct list_head *unfinished);
++
++void clear_wakeup_reasons(void);
+ 
+ #endif /* _LINUX_WAKEUP_REASON_H */
+diff --git a/kernel/irq/chip.c b/kernel/irq/chip.c
+index 5a2932713d0c..e09fc7fba9c0 100644
+--- a/kernel/irq/chip.c
++++ b/kernel/irq/chip.c
+@@ -327,11 +327,12 @@ void unmask_threaded_irq(struct irq_desc *desc)
+  *	handler. The handler function is called inside the calling
+  *	threads context.
+  */
+-void handle_nested_irq(unsigned int irq)
++bool handle_nested_irq(unsigned int irq)
+ {
+ 	struct irq_desc *desc = irq_to_desc(irq);
+ 	struct irqaction *action;
+ 	irqreturn_t action_ret;
++	bool handled = false;
+ 
+ 	might_sleep();
+ 
+@@ -356,8 +357,11 @@ void handle_nested_irq(unsigned int irq)
+ 	raw_spin_lock_irq(&desc->lock);
+ 	irqd_clear(&desc->irq_data, IRQD_IRQ_INPROGRESS);
+ 
++	handled = true;
++
+ out_unlock:
+ 	raw_spin_unlock_irq(&desc->lock);
++	return handled;
+ }
+ EXPORT_SYMBOL_GPL(handle_nested_irq);
+ 
+@@ -404,8 +408,10 @@ static bool irq_may_run(struct irq_desc *desc)
+  *	Note: The caller is expected to handle the ack, clear, mask and
+  *	unmask issues if necessary.
+  */
+-void handle_simple_irq(struct irq_desc *desc)
++bool handle_simple_irq(struct irq_desc *desc)
+ {
++	bool handled = false;
++
+ 	raw_spin_lock(&desc->lock);
+ 
+ 	if (!irq_may_run(desc))
+@@ -421,8 +427,11 @@ void handle_simple_irq(struct irq_desc *desc)
+ 	kstat_incr_irqs_this_cpu(desc);
+ 	handle_irq_event(desc);
+ 
++	handled = true;
++
+ out_unlock:
+ 	raw_spin_unlock(&desc->lock);
++	return handled;
+ }
+ EXPORT_SYMBOL_GPL(handle_simple_irq);
+ 
+@@ -453,8 +462,10 @@ static void cond_unmask_irq(struct irq_desc *desc)
+  *	it after the associated handler has acknowledged the device, so the
+  *	interrupt line is back to inactive.
+  */
+-void handle_level_irq(struct irq_desc *desc)
++bool handle_level_irq(struct irq_desc *desc)
+ {
++	bool handled = false;
++
+ 	raw_spin_lock(&desc->lock);
+ 	mask_ack_irq(desc);
+ 
+@@ -477,8 +488,11 @@ void handle_level_irq(struct irq_desc *desc)
+ 
+ 	cond_unmask_irq(desc);
+ 
++	handled = true;
++
+ out_unlock:
+ 	raw_spin_unlock(&desc->lock);
++	return handled;
+ }
+ EXPORT_SYMBOL_GPL(handle_level_irq);
+ 
+@@ -522,9 +536,10 @@ static void cond_unmask_eoi_irq(struct irq_desc *desc, struct irq_chip *chip)
+  *	for modern forms of interrupt handlers, which handle the flow
+  *	details in hardware, transparently.
+  */
+-void handle_fasteoi_irq(struct irq_desc *desc)
++bool handle_fasteoi_irq(struct irq_desc *desc)
+ {
+ 	struct irq_chip *chip = desc->irq_data.chip;
++	bool handled = false;
+ 
+ 	raw_spin_lock(&desc->lock);
+ 
+@@ -552,12 +567,15 @@ void handle_fasteoi_irq(struct irq_desc *desc)
+ 
+ 	cond_unmask_eoi_irq(desc, chip);
+ 
++	handled = true;
++
+ 	raw_spin_unlock(&desc->lock);
+-	return;
++	return handled;
+ out:
+ 	if (!(chip->flags & IRQCHIP_EOI_IF_HANDLED))
+ 		chip->irq_eoi(&desc->irq_data);
+ 	raw_spin_unlock(&desc->lock);
++	return handled;
+ }
+ EXPORT_SYMBOL_GPL(handle_fasteoi_irq);
+ 
+@@ -576,8 +594,10 @@ EXPORT_SYMBOL_GPL(handle_fasteoi_irq);
+  *	the handler was running. If all pending interrupts are handled, the
+  *	loop is left.
+  */
+-void handle_edge_irq(struct irq_desc *desc)
++bool handle_edge_irq(struct irq_desc *desc)
+ {
++	bool handled = false;
++
+ 	raw_spin_lock(&desc->lock);
+ 
+ 	desc->istate &= ~(IRQS_REPLAY | IRQS_WAITING);
+@@ -621,12 +641,14 @@ void handle_edge_irq(struct irq_desc *desc)
+ 		}
+ 
+ 		handle_irq_event(desc);
++		handled = true;
+ 
+ 	} while ((desc->istate & IRQS_PENDING) &&
+ 		 !irqd_irq_disabled(&desc->irq_data));
+ 
+ out_unlock:
+ 	raw_spin_unlock(&desc->lock);
++	return handled;
+ }
+ EXPORT_SYMBOL(handle_edge_irq);
+ 
+@@ -638,8 +660,9 @@ EXPORT_SYMBOL(handle_edge_irq);
+  * Similar as the above handle_edge_irq, but using eoi and w/o the
+  * mask/unmask logic.
+  */
+-void handle_edge_eoi_irq(struct irq_desc *desc)
++bool handle_edge_eoi_irq(struct irq_desc *desc)
+ {
++	bool handled = false;
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
+ 
+ 	raw_spin_lock(&desc->lock);
+@@ -667,6 +690,7 @@ void handle_edge_eoi_irq(struct irq_desc *desc)
+ 			goto out_eoi;
+ 
+ 		handle_irq_event(desc);
++		handled = true;
+ 
+ 	} while ((desc->istate & IRQS_PENDING) &&
+ 		 !irqd_irq_disabled(&desc->irq_data));
+@@ -674,6 +698,7 @@ void handle_edge_eoi_irq(struct irq_desc *desc)
+ out_eoi:
+ 	chip->irq_eoi(&desc->irq_data);
+ 	raw_spin_unlock(&desc->lock);
++	return handled;
+ }
+ #endif
+ 
+@@ -683,7 +708,7 @@ out_eoi:
+  *
+  *	Per CPU interrupts on SMP machines without locking requirements
+  */
+-void handle_percpu_irq(struct irq_desc *desc)
++bool handle_percpu_irq(struct irq_desc *desc)
+ {
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
+ 
+@@ -696,6 +721,8 @@ void handle_percpu_irq(struct irq_desc *desc)
+ 
+ 	if (chip->irq_eoi)
+ 		chip->irq_eoi(&desc->irq_data);
++
++	return true;
+ }
+ 
+ /**
+@@ -709,7 +736,7 @@ void handle_percpu_irq(struct irq_desc *desc)
+  * contain the real device id for the cpu on which this handler is
+  * called
+  */
+-void handle_percpu_devid_irq(struct irq_desc *desc)
++bool handle_percpu_devid_irq(struct irq_desc *desc)
+ {
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
+ 	struct irqaction *action = desc->action;
+@@ -728,6 +755,8 @@ void handle_percpu_devid_irq(struct irq_desc *desc)
+ 
+ 	if (chip->irq_eoi)
+ 		chip->irq_eoi(&desc->irq_data);
++
++	return true;
+ }
+ 
+ void
+diff --git a/kernel/irq/handle.c b/kernel/irq/handle.c
+index 57bff7857e87..80e76ddbf804 100644
+--- a/kernel/irq/handle.c
++++ b/kernel/irq/handle.c
+@@ -26,13 +26,14 @@
+  *
+  * Handles spurious and unhandled IRQ's. It also prints a debugmessage.
+  */
+-void handle_bad_irq(struct irq_desc *desc)
++bool handle_bad_irq(struct irq_desc *desc)
+ {
+ 	unsigned int irq = irq_desc_get_irq(desc);
+ 
+ 	print_irq_desc(irq, desc);
+ 	kstat_incr_irqs_this_cpu(desc);
+ 	ack_bad_irq(irq);
++	return true;
+ }
+ EXPORT_SYMBOL_GPL(handle_bad_irq);
+ 
+diff --git a/kernel/irq/irqdesc.c b/kernel/irq/irqdesc.c
+index 239e2ae2c947..a935c1bb768e 100644
+--- a/kernel/irq/irqdesc.c
++++ b/kernel/irq/irqdesc.c
+@@ -15,6 +15,7 @@
+ #include <linux/radix-tree.h>
+ #include <linux/bitmap.h>
+ #include <linux/irqdomain.h>
++#include <linux/wakeup_reason.h>
+ 
+ #include "internals.h"
+ 
+@@ -339,16 +340,25 @@ void irq_init_desc(unsigned int irq)
+ /**
+  * generic_handle_irq - Invoke the handler for a particular irq
+  * @irq:	The irq number to handle
+- *
++ * returns:
++ * 	negative on error
++ *	0 when the interrupt handler was not called
++ *	1 when the interrupt handler was called
+  */
++
+ int generic_handle_irq(unsigned int irq)
+ {
+ 	struct irq_desc *desc = irq_to_desc(irq);
+ 
+ 	if (!desc)
+ 		return -EINVAL;
+-	generic_handle_irq_desc(desc);
+-	return 0;
++
++	if (unlikely(logging_wakeup_reasons()))
++		return log_possible_wakeup_reason(irq,
++				desc,
++				generic_handle_irq_desc);
++
++	return generic_handle_irq_desc(desc);
+ }
+ EXPORT_SYMBOL_GPL(generic_handle_irq);
+ 
+diff --git a/kernel/power/suspend.c b/kernel/power/suspend.c
+index 58209d8bfc56..f3bec829aae5 100644
+--- a/kernel/power/suspend.c
++++ b/kernel/power/suspend.c
+@@ -390,6 +390,8 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
+ 			log_suspend_abort_reason(suspend_abort);
+ 			error = -EBUSY;
+ 		}
++
++		start_logging_wakeup_reasons();
+ 		syscore_resume();
+ 	}
+ 
+diff --git a/kernel/power/wakeup_reason.c b/kernel/power/wakeup_reason.c
+index 252611fad2fe..8d509428487b 100644
+--- a/kernel/power/wakeup_reason.c
++++ b/kernel/power/wakeup_reason.c
+@@ -26,42 +26,228 @@
+ #include <linux/spinlock.h>
+ #include <linux/notifier.h>
+ #include <linux/suspend.h>
+-
++#include <linux/slab.h>
+ 
+ #define MAX_WAKEUP_REASON_IRQS 32
+-static int irq_list[MAX_WAKEUP_REASON_IRQS];
+-static int irqcount;
+ static bool suspend_abort;
+ static char abort_reason[MAX_SUSPEND_ABORT_LEN];
++
++static struct wakeup_irq_node *base_irq_nodes;
++static struct wakeup_irq_node *cur_irq_tree;
++static int cur_irq_tree_depth;
++static LIST_HEAD(wakeup_irqs);
++
++static struct kmem_cache *wakeup_irq_nodes_cache;
+ static struct kobject *wakeup_reason;
+-static DEFINE_SPINLOCK(resume_reason_lock);
++static spinlock_t resume_reason_lock;
++bool log_wakeups __read_mostly;
++struct completion wakeups_completion;
+ 
+ static ktime_t last_monotime; /* monotonic time before last suspend */
+ static ktime_t curr_monotime; /* monotonic time after last suspend */
+ static ktime_t last_stime; /* monotonic boottime offset before last suspend */
+ static ktime_t curr_stime; /* monotonic boottime offset after last suspend */
+ 
+-static ssize_t last_resume_reason_show(struct kobject *kobj, struct kobj_attribute *attr,
+-		char *buf)
++static void init_wakeup_irq_node(struct wakeup_irq_node *p, int irq)
+ {
+-	int irq_no, buf_offset = 0;
+-	struct irq_desc *desc;
+-	spin_lock(&resume_reason_lock);
+-	if (suspend_abort) {
+-		buf_offset = sprintf(buf, "Abort: %s", abort_reason);
+-	} else {
+-		for (irq_no = 0; irq_no < irqcount; irq_no++) {
+-			desc = irq_to_desc(irq_list[irq_no]);
+-			if (desc && desc->action && desc->action->name)
+-				buf_offset += sprintf(buf + buf_offset, "%d %s\n",
+-						irq_list[irq_no], desc->action->name);
+-			else
+-				buf_offset += sprintf(buf + buf_offset, "%d\n",
+-						irq_list[irq_no]);
++	p->irq = irq;
++	p->desc = irq_to_desc(irq);
++	p->child = NULL;
++	p->parent = NULL;
++	p->handled = false;
++	INIT_LIST_HEAD(&p->siblings);
++	INIT_LIST_HEAD(&p->next);
++}
++
++static struct wakeup_irq_node* alloc_irq_node(int irq)
++{
++	struct wakeup_irq_node *n;
++
++	n = kmem_cache_alloc(wakeup_irq_nodes_cache, GFP_ATOMIC);
++	if (!n) {
++		pr_warning("Failed to log chained wakeup IRQ %d\n",
++			irq);
++		return NULL;
++	}
++
++	init_wakeup_irq_node(n, irq);
++	return n;
++}
++
++static struct wakeup_irq_node *
++search_siblings(struct wakeup_irq_node *root, int irq)
++{
++	bool found = false;
++	struct wakeup_irq_node *n = NULL;
++	BUG_ON(!root);
++
++	if (root->irq == irq)
++		return root;
++
++	list_for_each_entry(n, &root->siblings, siblings) {
++		if (n->irq == irq) {
++			found = true;
++			break;
+ 		}
+ 	}
+-	spin_unlock(&resume_reason_lock);
+-	return buf_offset;
++
++	return found ? n : NULL;
++}
++
++static struct wakeup_irq_node *
++add_to_siblings(struct wakeup_irq_node *root, int irq)
++{
++	struct wakeup_irq_node *n;
++	if (root) {
++		n = search_siblings(root, irq);
++		if (n)
++			return n;
++	}
++	n = alloc_irq_node(irq);
++
++	if (n && root)
++		list_add(&n->siblings, &root->siblings);
++	return n;
++}
++
++static struct wakeup_irq_node* add_child(struct wakeup_irq_node *root, int irq)
++{
++	if (!root->child) {
++		root->child = alloc_irq_node(irq);
++		if (!root->child)
++			return NULL;
++		root->child->parent = root;
++		return root->child;
++	}
++
++	return add_to_siblings(root->child, irq);
++}
++
++static struct wakeup_irq_node *find_first_sibling(struct wakeup_irq_node *node)
++{
++	struct wakeup_irq_node *n;
++	if (node->parent)
++		return node;
++	list_for_each_entry(n, &node->siblings, siblings) {
++		if (n->parent)
++			return n;
++	}
++	return NULL;
++}
++
++static struct wakeup_irq_node *
++get_base_node(struct wakeup_irq_node *node, unsigned depth)
++{
++	if (!node)
++		return NULL;
++
++	while (depth) {
++		node = find_first_sibling(node);
++		BUG_ON(!node);
++		node = node->parent;
++		depth--;
++	}
++
++	return node;
++}
++
++static const struct list_head* get_wakeup_reasons_nosync(void);
++
++static void print_wakeup_sources(void)
++{
++	struct wakeup_irq_node *n;
++	const struct list_head *wakeups;
++
++	if (suspend_abort) {
++		pr_info("Abort: %s", abort_reason);
++		return;
++	}
++
++	wakeups = get_wakeup_reasons_nosync();
++	list_for_each_entry(n, wakeups, next) {
++		if (n->desc && n->desc->action && n->desc->action->name)
++			pr_info("Resume caused by IRQ %d, %s\n", n->irq,
++				n->desc->action->name);
++		else
++			pr_info("Resume caused by IRQ %d\n", n->irq);
++	}
++}
++
++static bool walk_irq_node_tree(struct wakeup_irq_node *root,
++		bool (*visit)(struct wakeup_irq_node *, void *),
++		void *cookie)
++{
++	struct wakeup_irq_node *n, *t;
++
++	if (!root)
++		return true;
++
++	list_for_each_entry_safe(n, t, &root->siblings, siblings) {
++		if (!walk_irq_node_tree(n->child, visit, cookie))
++			return false;
++		if (!visit(n, cookie))
++			return false;
++	}
++
++	if (!walk_irq_node_tree(root->child, visit, cookie))
++		return false;
++	return visit(root, cookie);
++}
++
++static bool is_node_handled(struct wakeup_irq_node *n, void *_p)
++{
++	return n->handled;
++}
++
++static bool base_irq_nodes_done(void)
++{
++	return walk_irq_node_tree(base_irq_nodes, is_node_handled, NULL);
++}
++
++struct buf_cookie {
++	char *buf;
++	int buf_offset;
++};
++
++static bool print_leaf_node(struct wakeup_irq_node *n, void *_p)
++{
++	struct buf_cookie *b = _p;
++	if (!n->child) {
++		if (n->desc && n->desc->action && n->desc->action->name)
++			b->buf_offset +=
++				snprintf(b->buf + b->buf_offset,
++					PAGE_SIZE - b->buf_offset,
++					"%d %s\n",
++					n->irq, n->desc->action->name);
++		else
++			b->buf_offset +=
++				snprintf(b->buf + b->buf_offset,
++					PAGE_SIZE - b->buf_offset,
++					"%d\n",
++					n->irq);
++	}
++	return true;
++}
++
++static ssize_t last_resume_reason_show(struct kobject *kobj,
++					struct kobj_attribute *attr,
++					char *buf)
++{
++	unsigned long flags;
++
++	struct buf_cookie b = {
++		.buf = buf,
++		.buf_offset = 0
++	};
++
++	spin_lock_irqsave(&resume_reason_lock, flags);
++	if (suspend_abort)
++		b.buf_offset = snprintf(buf, PAGE_SIZE, "Abort: %s", abort_reason);
++	else
++		walk_irq_node_tree(base_irq_nodes, print_leaf_node, &b);
++	spin_unlock_irqrestore(&resume_reason_lock, flags);
++
++	return b.buf_offset;
+ }
+ 
+ static ssize_t last_suspend_time_show(struct kobject *kobj,
+@@ -104,45 +290,128 @@ static struct attribute_group attr_group = {
+ 	.attrs = attrs,
+ };
+ 
++static inline void stop_logging_wakeup_reasons(void)
++{
++	ACCESS_ONCE(log_wakeups) = false;
++}
++
+ /*
+- * logs all the wake up reasons to the kernel
+- * stores the irqs to expose them to the userspace via sysfs
++ * stores the immediate wakeup irqs; these often aren't the ones seen by
++ * the drivers that registered them, due to chained interrupt controllers,
++ * and multiple-interrupt dispatch.
+  */
+-void log_wakeup_reason(int irq)
++void log_base_wakeup_reason(int irq)
+ {
+-	struct irq_desc *desc;
+-	desc = irq_to_desc(irq);
+-	if (desc && desc->action && desc->action->name)
+-		printk(KERN_INFO "Resume caused by IRQ %d, %s\n", irq,
+-				desc->action->name);
+-	else
+-		printk(KERN_INFO "Resume caused by IRQ %d\n", irq);
++	/* No locking is needed, since this function is called within
++	 * syscore_resume, with both nonboot CPUs and interrupts disabled.
++	 */
++	base_irq_nodes = add_to_siblings(base_irq_nodes, irq);
++	BUG_ON(!base_irq_nodes);
++}
+ 
+-	spin_lock(&resume_reason_lock);
+-	if (irqcount == MAX_WAKEUP_REASON_IRQS) {
+-		spin_unlock(&resume_reason_lock);
+-		printk(KERN_WARNING "Resume caused by more than %d IRQs\n",
+-				MAX_WAKEUP_REASON_IRQS);
+-		return;
++/* This function is called by generic_handle_irq, which may call itself
++ * recursively.  This happens with interrupts disabled.  Using
++ * log_possible_wakeup_reason, we build a tree of interrupts, tracing the call
++ * stack of generic_handle_irq, for each wakeup source containing the
++ * interrupts actually handled.
++ *
++ * Most of these "trees" would either have a single node (in the event that the
++ * wakeup source is the final interrupt), or consist of a list of two
++ * interrupts, with the wakeup source at the root, and the final dispatched
++ * interrupt at the leaf.
++ *
++ * When *all* wakeup sources have been thusly spoken for, this function will
++ * clear the log_wakeups flag, and print the wakeup reasons.
++
++   TODO: percpu
++
++ */
++
++struct wakeup_irq_node *
++log_possible_wakeup_reason_start(int irq, struct irq_desc *desc, unsigned depth)
++{
++	BUG_ON(!irqs_disabled() || !logging_wakeup_reasons());
++	BUG_ON((signed)depth < 0);
++
++	/* If suspend was aborted, the base IRQ nodes are missing, and we stop
++	 * logging interrupts immediately.
++	 */
++	if (!base_irq_nodes) {
++		stop_logging_wakeup_reasons();
++		return NULL;
+ 	}
+ 
+-	irq_list[irqcount++] = irq;
+-	spin_unlock(&resume_reason_lock);
++	/* We assume wakeup interrupts are handlerd only by the first core. */
++	/* TODO: relax this by having percpu versions of the irq tree */
++	if (smp_processor_id() != 0) {
++		return NULL;
++	}
++
++	if (depth == 0) {
++		cur_irq_tree_depth = 0;
++		cur_irq_tree = search_siblings(base_irq_nodes, irq);
++	}
++	else if (cur_irq_tree) {
++		if (depth > cur_irq_tree_depth) {
++			BUG_ON(depth - cur_irq_tree_depth > 1);
++			cur_irq_tree = add_child(cur_irq_tree, irq);
++			if (cur_irq_tree)
++				cur_irq_tree_depth++;
++		}
++		else {
++			cur_irq_tree = get_base_node(cur_irq_tree,
++					cur_irq_tree_depth - depth);
++			cur_irq_tree_depth = depth;
++			cur_irq_tree = add_to_siblings(cur_irq_tree, irq);
++		}
++	}
++
++	return cur_irq_tree;
+ }
+ 
+-int check_wakeup_reason(int irq)
++void log_possible_wakeup_reason_complete(struct wakeup_irq_node *n,
++					unsigned depth,
++					bool handled)
+ {
+-	int irq_no;
+-	int ret = false;
+-
+-	spin_lock(&resume_reason_lock);
+-	for (irq_no = 0; irq_no < irqcount; irq_no++)
+-		if (irq_list[irq_no] == irq) {
+-			ret = true;
+-			break;
++	if (!n)
++		return;
++	n->handled = handled;
++	if (depth == 0) {
++		if (base_irq_nodes_done()) {
++			stop_logging_wakeup_reasons();
++			complete(&wakeups_completion);
++			print_wakeup_sources();
++		}
+ 	}
+-	spin_unlock(&resume_reason_lock);
+-	return ret;
++}
++
++bool log_possible_wakeup_reason(int irq,
++			struct irq_desc *desc,
++			bool (*handler)(struct irq_desc *))
++{
++	static DEFINE_PER_CPU(unsigned int, depth);
++
++	struct wakeup_irq_node *n;
++	bool handled;
++	unsigned d;
++
++	d = get_cpu_var(depth)++;
++	put_cpu_var(depth);
++
++	n = log_possible_wakeup_reason_start(irq, desc, d);
++
++	handled = handler(desc);
++
++	d = --get_cpu_var(depth);
++	put_cpu_var(depth);
++
++	if (!handled && desc && desc->action)
++		pr_debug("%s: irq %d action %pF not handled\n", __func__,
++			irq, desc->action->handler);
++
++	log_possible_wakeup_reason_complete(n, d, handled);
++
++	return handled;
+ }
+ 
+ void log_suspend_abort_reason(const char *fmt, ...)
+@@ -161,7 +430,95 @@ void log_suspend_abort_reason(const char *fmt, ...)
+ 	va_start(args, fmt);
+ 	vsnprintf(abort_reason, MAX_SUSPEND_ABORT_LEN, fmt, args);
+ 	va_end(args);
++
++	spin_unlock(&resume_reason_lock);
++}
++
++static bool match_node(struct wakeup_irq_node *n, void *_p)
++{
++	int irq = *((int *)_p);
++	return n->irq != irq;
++}
++
++int check_wakeup_reason(int irq)
++{
++	bool found;
++	spin_lock(&resume_reason_lock);
++	found = !walk_irq_node_tree(base_irq_nodes, match_node, &irq);
+ 	spin_unlock(&resume_reason_lock);
++	return found;
++}
++
++static bool build_leaf_nodes(struct wakeup_irq_node *n, void *_p)
++{
++	struct list_head *wakeups = _p;
++	if (!n->child)
++		list_add(&n->next, wakeups);
++	return true;
++}
++
++static const struct list_head* get_wakeup_reasons_nosync(void)
++{
++	BUG_ON(logging_wakeup_reasons());
++	INIT_LIST_HEAD(&wakeup_irqs);
++	walk_irq_node_tree(base_irq_nodes, build_leaf_nodes, &wakeup_irqs);
++	return &wakeup_irqs;
++}
++
++static bool build_unfinished_nodes(struct wakeup_irq_node *n, void *_p)
++{
++	struct list_head *unfinished = _p;
++	if (!n->handled) {
++		pr_warning("%s: wakeup irq %d was not handled\n",
++			   __func__, n->irq);
++		list_add(&n->next, unfinished);
++	}
++	return true;
++}
++
++const struct list_head* get_wakeup_reasons(unsigned long timeout,
++					struct list_head *unfinished)
++{
++	INIT_LIST_HEAD(unfinished);
++
++	if (logging_wakeup_reasons()) {
++		unsigned long signalled = 0;
++		if (timeout)
++			signalled = wait_for_completion_timeout(&wakeups_completion, timeout);
++		if (WARN_ON(!signalled)) {
++			stop_logging_wakeup_reasons();
++			walk_irq_node_tree(base_irq_nodes, build_unfinished_nodes, unfinished);
++			return NULL;
++		}
++		pr_info("%s: waited for %u ms\n",
++				__func__,
++				jiffies_to_msecs(timeout - signalled));
++	}
++
++	return get_wakeup_reasons_nosync();
++}
++
++static bool delete_node(struct wakeup_irq_node *n, void *unused)
++{
++	list_del(&n->siblings);
++	kmem_cache_free(wakeup_irq_nodes_cache, n);
++	return true;
++}
++
++void clear_wakeup_reasons(void)
++{
++	unsigned long flags;
++	spin_lock_irqsave(&resume_reason_lock, flags);
++
++	BUG_ON(logging_wakeup_reasons());
++	walk_irq_node_tree(base_irq_nodes, delete_node, NULL);
++	base_irq_nodes = NULL;
++	cur_irq_tree = NULL;
++	cur_irq_tree_depth = 0;
++	INIT_LIST_HEAD(&wakeup_irqs);
++	suspend_abort = false;
++
++	spin_unlock_irqrestore(&resume_reason_lock, flags);
+ }
+ 
+ /* Detects a suspend and clears all the previous wake up reasons*/
+@@ -171,15 +528,21 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
+ 	switch (pm_event) {
+ 	case PM_SUSPEND_PREPARE:
+ 		spin_lock(&resume_reason_lock);
+-		irqcount = 0;
+ 		suspend_abort = false;
+ 		spin_unlock(&resume_reason_lock);
+ 		/* monotonic time since boot */
+ 		last_monotime = ktime_get();
+ 		/* monotonic time since boot including the time spent in suspend */
+ 		last_stime = ktime_get_boottime();
++		clear_wakeup_reasons();
+ 		break;
+ 	case PM_POST_SUSPEND:
++		/* log_wakeups should have been cleared by now. */
++		if (WARN_ON(logging_wakeup_reasons())) {
++			stop_logging_wakeup_reasons();
++			mb();
++			print_wakeup_sources();
++		}
+ 		/* monotonic time since boot */
+ 		curr_monotime = ktime_get();
+ 		/* monotonic time since boot including the time spent in suspend */
+@@ -195,31 +558,46 @@ static struct notifier_block wakeup_reason_pm_notifier_block = {
+ 	.notifier_call = wakeup_reason_pm_event,
+ };
+ 
+-/* Initializes the sysfs parameter
+- * registers the pm_event notifier
+- */
+ int __init wakeup_reason_init(void)
+ {
+-	int retval;
++	spin_lock_init(&resume_reason_lock);
+ 
+-	retval = register_pm_notifier(&wakeup_reason_pm_notifier_block);
+-	if (retval)
+-		printk(KERN_WARNING "[%s] failed to register PM notifier %d\n",
+-				__func__, retval);
++	if (register_pm_notifier(&wakeup_reason_pm_notifier_block)) {
++		pr_warning("[%s] failed to register PM notifier\n",
++			__func__);
++		goto fail;
++	}
+ 
+ 	wakeup_reason = kobject_create_and_add("wakeup_reasons", kernel_kobj);
+ 	if (!wakeup_reason) {
+-		printk(KERN_WARNING "[%s] failed to create a sysfs kobject\n",
++		pr_warning("[%s] failed to create a sysfs kobject\n",
+ 				__func__);
+-		return 1;
++		goto fail_unregister_pm_notifier;
+ 	}
+-	retval = sysfs_create_group(wakeup_reason, &attr_group);
+-	if (retval) {
+-		kobject_put(wakeup_reason);
+-		printk(KERN_WARNING "[%s] failed to create a sysfs group %d\n",
+-				__func__, retval);
++
++	if (sysfs_create_group(wakeup_reason, &attr_group)) {
++		pr_warning("[%s] failed to create a sysfs group\n",
++			__func__);
++		goto fail_kobject_put;
+ 	}
++
++	wakeup_irq_nodes_cache =
++		kmem_cache_create("wakeup_irq_node_cache",
++					sizeof(struct wakeup_irq_node), 0,
++					0, NULL);
++	if (!wakeup_irq_nodes_cache)
++		goto fail_remove_group;
++
+ 	return 0;
++
++fail_remove_group:
++	sysfs_remove_group(wakeup_reason, &attr_group);
++fail_kobject_put:
++	kobject_put(wakeup_reason);
++fail_unregister_pm_notifier:
++	unregister_pm_notifier(&wakeup_reason_pm_notifier_block);
++fail:
++	return 1;
+ }
+ 
+ late_initcall(wakeup_reason_init);
+-- 
+2.15.0
+

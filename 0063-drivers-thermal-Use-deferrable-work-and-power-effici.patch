@@ -1,0 +1,47 @@
+From 59af00a70b00959807bce99398baba562a39f994 Mon Sep 17 00:00:00 2001
+From: Ram Chandrasekar <rkumbako@codeaurora.org>
+Date: Fri, 23 Jun 2017 10:41:23 -0600
+Subject: [PATCH 063/420] drivers: thermal: Use deferrable work and power
+ efficient workqueue
+
+Thermal core uses work events to poll for sensor driver temperature
+crossing a threshold. Since it is not using a deferrable workqueue, it
+might wake-up the device from sleep.
+
+Use a deferrable work event and post the work in the power efficient
+workqueue for estimating virtual sensor temperature.
+
+Change-Id: I9dd21d8fc4e5ca96e06db9ecb57a628618494a01
+Signed-off-by: Ram Chandrasekar <rkumbako@codeaurora.org>
+---
+ drivers/thermal/thermal_core.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index 5b5b41e30d90..38355d28941c 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -820,8 +820,9 @@ static void monitor_thermal_zone(struct thermal_zone_device *tz)
+ 		thermal_zone_device_set_polling(thermal_passive_wq,
+ 						tz, tz->passive_delay);
+ 	else if (tz->polling_delay)
+-		thermal_zone_device_set_polling(system_freezable_wq,
+-						tz, tz->polling_delay);
++		thermal_zone_device_set_polling(
++				system_freezable_power_efficient_wq,
++				tz, tz->polling_delay);
+ 	else
+ 		thermal_zone_device_set_polling(NULL, tz, 0);
+ 
+@@ -2404,7 +2405,7 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
+ 	/* Bind cooling devices for this zone */
+ 	bind_tz(tz);
+ 
+-	INIT_DELAYED_WORK(&(tz->poll_queue), thermal_zone_device_check);
++	INIT_DEFERRABLE_WORK(&(tz->poll_queue), thermal_zone_device_check);
+ 
+ 	thermal_zone_device_reset(tz);
+ 	/* Update the new thermal zone and mark it as already updated. */
+-- 
+2.15.0
+

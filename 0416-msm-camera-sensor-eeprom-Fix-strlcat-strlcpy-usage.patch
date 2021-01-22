@@ -1,0 +1,87 @@
+From 1559542e9b6d8eba3236d3af427a6d9718f8f876 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Wed, 11 Mar 2020 22:29:13 +0200
+Subject: [PATCH 416/420] msm: camera: sensor: eeprom: Fix strlcat/strlcpy
+ usage
+
+Clang warns:
+
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1830:50:
+warning: size argument in 'strlcat' call appears to be size of the source;
+expected the size of the destination [-Wstrlcpy-strlcat-size]
+                                strlcat(module_eeprom_name, pro_name, sizeof(pro_name));
+                                                                      ~~~~~~~^~~~~~~~~
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1830:43:
+note: change size argument to be the size of the destination
+                                strlcat(module_eeprom_name, pro_name, sizeof(pro_name));
+                                                                      ^~~~~~~~~~~~~~~~
+                                                                      sizeof(module_eeprom_name)
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1832:53:
+warning: size argument in 'strlcat' call appears to be size of the source;
+expected the size of the destination [-Wstrlcpy-strlcat-size]
+                                strlcat(module_eeprom_name, sensor_name, sizeof(sensor_name));
+                                                                         ~~~~~~~^~~~~~~~~~~~
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1832:46:
+note: change size argument to be the size of the destination
+                                strlcat(module_eeprom_name, sensor_name, sizeof(sensor_name));
+                                                                         ^~~~~~~~~~~~~~~~~~~
+                                                                         sizeof(module_eeprom_name)
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1834:53:
+warning: size argument in 'strlcat' call appears to be size of the source;
+expected the size of the destination [-Wstrlcpy-strlcat-size]
+                                strlcat(module_eeprom_name, module_name, sizeof(module_name));
+                                                                         ~~~~~~~^~~~~~~~~~~~
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1834:46:
+note: change size argument to be the size of the destination
+                                strlcat(module_eeprom_name, module_name, sizeof(module_name));
+                                                                         ^~~~~~~~~~~~~~~~~~~
+                                                                         sizeof(module_eeprom_name)
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1897:81:
+warning: size argument in 'strlcpy' call appears to be size of the source;
+expected the size of the destination [-Wstrlcpy-strlcat-size]
+        strlcpy(sensor_eeprom_name[eeprom_name_count].name, module_eeprom_name, sizeof(module_eeprom_name));
+                                                                                ~~~~~~~^~~~~~~~~~~~~~~~~~~
+../drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c:1897:74:
+note: change size argument to be the size of the destination
+        strlcpy(sensor_eeprom_name[eeprom_name_count].name, module_eeprom_name, sizeof(module_eeprom_name));
+                                                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~
+                                                                                sizeof(sensor_eeprom_name[eeprom_name_count].name)
+
+Fixes: 84414eb752ca ("camera_v2: import xiaomi changes")
+
+Change-Id: Ia817f60d33b0391e12c5b3249673489933f3aef3
+---
+ drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c b/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c
+index f629cae5d58a..6252fb28c132 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/eeprom/msm_eeprom.c
+@@ -1827,11 +1827,11 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
+ 
+ 		for (j = 0; j < 3; j++) {
+ 			if (0 == j) {
+-				strlcat(module_eeprom_name, pro_name, sizeof(pro_name));
++				strlcat(module_eeprom_name, pro_name, sizeof(module_eeprom_name));
+ 			} else if (1 == j) {
+-				strlcat(module_eeprom_name, sensor_name, sizeof(sensor_name));
++				strlcat(module_eeprom_name, sensor_name, sizeof(module_eeprom_name));
+ 			} else {
+-				strlcat(module_eeprom_name, module_name, sizeof(module_name));
++				strlcat(module_eeprom_name, module_name, sizeof(module_eeprom_name));
+ 			}
+ 		}
+ 		CDBG("%s: module_eeprom_name = %s\n", __func__, module_eeprom_name);
+@@ -1894,7 +1894,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
+ 	e_ctrl->is_supported = (e_ctrl->is_supported << 1) | 1;
+ 
+ #ifdef CONFIG_MACH_XIAOMI_MSM8998
+-	strlcpy(sensor_eeprom_name[eeprom_name_count].name, module_eeprom_name, sizeof(module_eeprom_name));
++	strlcpy(sensor_eeprom_name[eeprom_name_count].name, module_eeprom_name, sizeof(sensor_eeprom_name[eeprom_name_count].name));
+ 	pr_err("%s: sensor_eeprom_name[%d] = %s, probe success!\n", __func__, eeprom_name_count, sensor_eeprom_name[eeprom_name_count].name);
+ 	eeprom_name_count++;
+ #endif
+-- 
+2.15.0
+

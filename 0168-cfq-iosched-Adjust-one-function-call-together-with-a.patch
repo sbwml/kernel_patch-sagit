@@ -1,0 +1,39 @@
+From c04eeb91e95fe1cd1bcd970e32b72e5becbdcce6 Mon Sep 17 00:00:00 2001
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Sat, 21 Jan 2017 22:44:07 +0100
+Subject: [PATCH 168/420] cfq-iosched: Adjust one function call together with a
+ variable assignment
+
+The script "checkpatch.pl" pointed information out like the following.
+
+ERROR: do not use assignment in if condition
+
+Thus fix the affected source code place.
+
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+---
+ block/cfq-iosched.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+index 685da50cdd0b..3caf05cdd376 100644
+--- a/block/cfq-iosched.c
++++ b/block/cfq-iosched.c
+@@ -2749,9 +2749,11 @@ static struct cfq_queue *cfq_get_next_queue_forced(struct cfq_data *cfqd)
+ 	if (!cfqg)
+ 		return NULL;
+ 
+-	for_each_cfqg_st(cfqg, i, j, st)
+-		if ((cfqq = cfq_rb_first(st)) != NULL)
++	for_each_cfqg_st(cfqg, i, j, st) {
++		cfqq = cfq_rb_first(st);
++		if (cfqq)
+ 			return cfqq;
++	}
+ 	return NULL;
+ }
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,44 @@
+From c30bba7b86dae762b4abd58333d936b28841d1d6 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Wed, 28 Aug 2019 19:58:26 -0700
+Subject: [PATCH 207/420] f2fs: fix flushing node pages when checkpoint is
+ disabled
+
+This patch fixes skipping node page writes when checkpoint is disabled.
+In this period, we can't rely on checkpoint to flush node pages.
+
+Fixes: fd8c8caf7e7c ("f2fs: let checkpoint flush dnode page of regular")
+Fixes: 4354994f097d ("f2fs: checkpoint disabling")
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/node.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 47ae2f0dc586..3c84ccbeee32 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1524,7 +1524,8 @@ static int __write_node_page(struct page *page, bool atomic, bool *submitted,
+ 	if (unlikely(is_sbi_flag_set(sbi, SBI_POR_DOING)))
+ 		goto redirty_out;
+ 
+-	if (wbc->sync_mode == WB_SYNC_NONE &&
++	if (!is_sbi_flag_set(sbi, SBI_CP_DISABLED) &&
++			wbc->sync_mode == WB_SYNC_NONE &&
+ 			IS_DNODE(page) && is_cold_node(page))
+ 		goto redirty_out;
+ 
+@@ -1909,7 +1910,8 @@ continue_unlock:
+ 	}
+ 
+ 	if (step < 2) {
+-		if (wbc->sync_mode == WB_SYNC_NONE && step == 1)
++		if (!is_sbi_flag_set(sbi, SBI_CP_DISABLED) &&
++				wbc->sync_mode == WB_SYNC_NONE && step == 1)
+ 			goto out;
+ 		step++;
+ 		goto next_step;
+-- 
+2.15.0
+

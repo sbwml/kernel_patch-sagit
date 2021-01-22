@@ -1,0 +1,61 @@
+From ccbbb29f87402fc73e087046d5610c5531046549 Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Sat, 11 Nov 2017 18:43:15 +0200
+Subject: [PATCH 301/420] platform: add xiaomi board selection
+
+Change-Id: Ied4baa79fe62cb1ee5c671de8ca69402050e884c
+---
+ drivers/platform/Kconfig        |  2 ++
+ drivers/platform/xiaomi/Kconfig | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+)
+ create mode 100644 drivers/platform/xiaomi/Kconfig
+
+diff --git a/drivers/platform/Kconfig b/drivers/platform/Kconfig
+index d208ab5546c8..e6ba74145dce 100644
+--- a/drivers/platform/Kconfig
++++ b/drivers/platform/Kconfig
+@@ -9,3 +9,5 @@ source "drivers/platform/goldfish/Kconfig"
+ source "drivers/platform/chrome/Kconfig"
+ 
+ source "drivers/platform/msm/Kconfig"
++
++source "drivers/platform/xiaomi/Kconfig"
+diff --git a/drivers/platform/xiaomi/Kconfig b/drivers/platform/xiaomi/Kconfig
+new file mode 100644
+index 000000000000..57afbbe6259e
+--- /dev/null
++++ b/drivers/platform/xiaomi/Kconfig
+@@ -0,0 +1,30 @@
++# Xiaomi configuration options
++
++config MACH_XIAOMI
++	bool "Xiaomi board"
++	depends on ARCH_QCOM
++	help
++	 Support for Xiaomi boards.
++
++config MACH_XIAOMI_MSM8998
++	bool "Xiaomi MSM8998 boards"
++	depends on ARCH_MSM8998
++	select MACH_XIAOMI
++	help
++	 Support for MSM8998 Xiaomi boards.
++
++menu "Xiaomi board selection"
++
++config MACH_SAGIT
++	bool "sagit board"
++	select MACH_XIAOMI_MSM8998
++	help
++	 Support for Xiaomi Mi6, codenamed sagit.
++
++config MACH_CHIRON
++	bool "chiron board"
++	select MACH_XIAOMI_MSM8998
++	help
++	 Support for Xiaomi Mi Mix2, codenamed chiron.
++
++endmenu
+-- 
+2.15.0
+

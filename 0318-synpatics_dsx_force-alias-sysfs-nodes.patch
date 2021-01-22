@@ -1,0 +1,36 @@
+From 03cd402ccb4d11efdc1039dc2b741c55cfc17315 Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Thu, 16 Nov 2017 21:37:33 +0200
+Subject: [PATCH 318/420] synpatics_dsx_force: alias sysfs nodes
+
+Change-Id: I79cd5267da895e2f8535e73fd13bf7691897eb74
+---
+ drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+index 004fc13e36f2..640ef5ae8314 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+@@ -756,12 +756,18 @@ static struct device_attribute attrs[] = {
+ 	__ATTR(0dbutton, (S_IRUGO | S_IWUSR),
+ 			synaptics_rmi4_0dbutton_show,
+ 			synaptics_rmi4_0dbutton_store),
++	__ATTR(capacitive_keys_enable, (S_IRUGO | S_IWUSR),
++			synaptics_rmi4_0dbutton_show,
++			synaptics_rmi4_0dbutton_store),
+ 	__ATTR(suspend, S_IWUSR,
+ 			synaptics_rmi4_show_error,
+ 			synaptics_rmi4_suspend_store),
+ 	__ATTR(wake_gesture, (S_IRUGO | S_IWUSR),
+ 			synaptics_rmi4_wake_gesture_show,
+ 			synaptics_rmi4_wake_gesture_store),
++	__ATTR(double_tap_enable, (S_IRUGO | S_IWUSR),
++			synaptics_rmi4_wake_gesture_show,
++			synaptics_rmi4_wake_gesture_store),
+ 	__ATTR(irq_enable, (S_IRUGO | S_IWUSR),
+ 			synaptics_rmi4_irq_enable_show,
+ 			synaptics_rmi4_irq_enable_store),
+-- 
+2.15.0
+

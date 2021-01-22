@@ -1,0 +1,40 @@
+From bd6953c543ebb8f1bd1065604c3ab5d4f6244698 Mon Sep 17 00:00:00 2001
+From: Thierry Strudel <tstrudel@google.com>
+Date: Tue, 14 Mar 2017 09:04:33 -0700
+Subject: [PATCH 365/420] {chiron,sagit}_defconfig: enable
+ CONFIG_MEMORY_STATE_TIME
+
+Change-Id: Ic4d6e76e3d7a14e9ced9ec389f4253a596169b63
+Signed-off-by: Thierry Strudel <tstrudel@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 6390358cbdb1..76dd66391712 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -248,6 +248,7 @@ CONFIG_BLK_DEV_RAM_SIZE=8192
+ CONFIG_QSEECOM=y
+ CONFIG_HDCP_QSEECOM=y
+ CONFIG_UID_SYS_STATS=y
++CONFIG_MEMORY_STATE_TIME=y
+ CONFIG_SCSI=y
+ CONFIG_BLK_DEV_SD=y
+ CONFIG_CHR_DEV_SG=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index bebfc124e25c..bedf4511b52d 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -248,6 +248,7 @@ CONFIG_BLK_DEV_RAM_SIZE=8192
+ CONFIG_QSEECOM=y
+ CONFIG_HDCP_QSEECOM=y
+ CONFIG_UID_SYS_STATS=y
++CONFIG_MEMORY_STATE_TIME=y
+ CONFIG_SCSI=y
+ CONFIG_BLK_DEV_SD=y
+ CONFIG_CHR_DEV_SG=y
+-- 
+2.15.0
+

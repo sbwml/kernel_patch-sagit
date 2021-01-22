@@ -1,0 +1,33 @@
+From 4b7a4f2201eb2e945076ed881664c02f9b82b19b Mon Sep 17 00:00:00 2001
+From: Akhil Narang <akhilnarang.1999@gmail.com>
+Date: Sat, 15 Sep 2018 16:25:46 +0530
+Subject: [PATCH 015/420] staging: qca-wifi-host-cmn: fix build after disabling
+ debug
+
+../drivers/staging/qcacld-3.0/../qca-wifi-host-cmn/qdf/linux/src/qdf_event.c:363:54: error: expected expression
+                        "Failed to add event in the list in %s", __func__),
+                                                                          ^
+1 error generated.
+
+Change-Id: I0412209ffdbbeabb87a289b96e47f9785f18d23c
+Signed-off-by: Akhil Narang <akhilnarang.1999@gmail.com>
+---
+ drivers/staging/qca-wifi-host-cmn/qdf/linux/src/qdf_event.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/qdf_event.c b/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/qdf_event.c
+index 8a88a74d8138..edbfa05d1e00 100644
+--- a/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/qdf_event.c
++++ b/drivers/staging/qca-wifi-host-cmn/qdf/linux/src/qdf_event.c
+@@ -360,7 +360,7 @@ QDF_STATUS qdf_wait_for_event_completion(qdf_event_t *event, uint32_t timeout)
+ 
+ 	if (QDF_STATUS_SUCCESS != status) {
+ 		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+-			"Failed to add event in the list in %s", __func__),
++			"Failed to add event in the list in %s", __func__);
+ 		status = QDF_STATUS_E_FAULT;
+ 		goto err_list_add;
+ 	}
+-- 
+2.15.0
+

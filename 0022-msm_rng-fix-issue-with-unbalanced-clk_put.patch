@@ -1,0 +1,36 @@
+From 08d2d9819778bcc13c32f05e4c10f6502f96785d Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Wed, 1 Mar 2017 20:15:37 -0800
+Subject: [PATCH 022/420] msm_rng: fix issue with unbalanced clk_put
+
+This patch fixes the following coccicheck errors:
+
+msm_rng.c:335:2-8: ERROR: missing clk_put;
+clk_get on line 282 and execution via conditional on line 333
+msm_rng.c:335:2-8: ERROR: missing clk_put;
+clk_get on line 285 and execution via conditional on line 333
+
+Bug: 35898203
+Change-Id: Id6e0854ec11f95fe2bf7f887876535e2d8e74d22
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/char/hw_random/msm_rng.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/char/hw_random/msm_rng.c b/drivers/char/hw_random/msm_rng.c
+index ba82dbfd0625..38f8eb347087 100644
+--- a/drivers/char/hw_random/msm_rng.c
++++ b/drivers/char/hw_random/msm_rng.c
+@@ -332,7 +332,8 @@ static int msm_rng_probe(struct platform_device *pdev)
+ 	msm_rng_class = class_create(THIS_MODULE, "msm-rng");
+ 	if (IS_ERR(msm_rng_class)) {
+ 		pr_err("class_create failed\n");
+-		return PTR_ERR(msm_rng_class);
++		error = PTR_ERR(msm_rng_class);
++		goto unregister_chrdev;
+ 	}
+ 
+ 	dev = device_create(msm_rng_class, NULL, MKDEV(QRNG_IOC_MAGIC, 0),
+-- 
+2.15.0
+

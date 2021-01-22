@@ -1,0 +1,79 @@
+From d2ce7e87a03a780b5ee6c2ec4dcd777ad240de9d Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Fri, 8 May 2020 17:50:20 +0800
+Subject: [PATCH 275/420] f2fs: shrink spinlock coverage
+
+In f2fs_try_to_free_nids(), .nid_list_lock spinlock critical region will
+increase as expected shrink number increase, to avoid spining other CPUs
+for long time, we change to release nid caches with small batch each time
+under .nid_list_lock coverage.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/node.c | 25 +++++++++++++++----------
+ fs/f2fs/node.h |  3 +++
+ 2 files changed, 18 insertions(+), 10 deletions(-)
+
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index d3702bc5c304..208b177f803f 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -2489,7 +2489,6 @@ void f2fs_alloc_nid_failed(struct f2fs_sb_info *sbi, nid_t nid)
+ int f2fs_try_to_free_nids(struct f2fs_sb_info *sbi, int nr_shrink)
+ {
+ 	struct f2fs_nm_info *nm_i = NM_I(sbi);
+-	struct free_nid *i, *next;
+ 	int nr = nr_shrink;
+ 
+ 	if (nm_i->nid_cnt[FREE_NID] <= MAX_FREE_NIDS)
+@@ -2498,17 +2497,23 @@ int f2fs_try_to_free_nids(struct f2fs_sb_info *sbi, int nr_shrink)
+ 	if (!mutex_trylock(&nm_i->build_lock))
+ 		return 0;
+ 
+-	spin_lock(&nm_i->nid_list_lock);
+-	list_for_each_entry_safe(i, next, &nm_i->free_nid_list, list) {
+-		if (nr_shrink <= 0 ||
+-				nm_i->nid_cnt[FREE_NID] <= MAX_FREE_NIDS)
+-			break;
++	while (nr_shrink && nm_i->nid_cnt[FREE_NID] > MAX_FREE_NIDS) {
++		struct free_nid *i, *next;
++		unsigned int batch = SHRINK_NID_BATCH_SIZE;
+ 
+-		__remove_free_nid(sbi, i, FREE_NID);
+-		kmem_cache_free(free_nid_slab, i);
+-		nr_shrink--;
++		spin_lock(&nm_i->nid_list_lock);
++		list_for_each_entry_safe(i, next, &nm_i->free_nid_list, list) {
++			if (!nr_shrink || !batch ||
++				nm_i->nid_cnt[FREE_NID] <= MAX_FREE_NIDS)
++				break;
++			__remove_free_nid(sbi, i, FREE_NID);
++			kmem_cache_free(free_nid_slab, i);
++			nr_shrink--;
++			batch--;
++		}
++		spin_unlock(&nm_i->nid_list_lock);
+ 	}
+-	spin_unlock(&nm_i->nid_list_lock);
++
+ 	mutex_unlock(&nm_i->build_lock);
+ 
+ 	return nr - nr_shrink;
+diff --git a/fs/f2fs/node.h b/fs/f2fs/node.h
+index e05af5df5648..33d677f83569 100644
+--- a/fs/f2fs/node.h
++++ b/fs/f2fs/node.h
+@@ -15,6 +15,9 @@
+ #define FREE_NID_PAGES	8
+ #define MAX_FREE_NIDS	(NAT_ENTRY_PER_BLOCK * FREE_NID_PAGES)
+ 
++/* size of free nid batch when shrinking */
++#define SHRINK_NID_BATCH_SIZE	8
++
+ #define DEF_RA_NID_PAGES	0	/* # of nid pages to be readaheaded */
+ 
+ /* maximum readahead size for node during getting data blocks */
+-- 
+2.15.0
+

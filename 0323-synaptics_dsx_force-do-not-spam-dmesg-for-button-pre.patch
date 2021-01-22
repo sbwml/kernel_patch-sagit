@@ -1,0 +1,30 @@
+From f8e274527ed797e33997e56eafc03ba627e3ca19 Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Mon, 9 Apr 2018 04:26:02 +0000
+Subject: [PATCH 323/420] synaptics_dsx_force: do not spam dmesg for button
+ presses
+
+Change-Id: Ia10ab0db050cf1d1fd4fc73e99a1c46b923281fa
+---
+ drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+index 5e3c9a451d30..242d78e0798b 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+@@ -1870,11 +1870,6 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
+ 		shift = button % 8;
+ 		status = ((data[index] >> shift) & MASK_1BIT);
+ 
+-		dev_err(rmi4_data->pdev->dev.parent,
+-				"%s: Button %d (code %d) ->%d\n",
+-				__func__, button,
+-				f1a->button_map[button],
+-				status);
+ #ifdef NO_0D_WHILE_2D
+ 		if (rmi4_data->fingers_on_2d == false) {
+ 			if (status == 1) {
+-- 
+2.15.0
+

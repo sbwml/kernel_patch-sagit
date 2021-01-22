@@ -1,0 +1,29 @@
+From 8b0674186958f6ade75ec68483453225773bf76f Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Thu, 15 Aug 2019 19:45:34 +0800
+Subject: [PATCH 193/420] f2fs: use wrapped IS_SWAPFILE()
+
+Just cleanup, no logic change.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 4f68f1cd6dd6..157b729729a5 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3778,7 +3778,7 @@ static inline bool f2fs_force_buffered_io(struct inode *inode,
+ 				block_unaligned_IO(inode, iocb, iter))
+ 		return true;
+ 	if (is_sbi_flag_set(F2FS_I_SB(inode), SBI_CP_DISABLED) &&
+-					!(inode->i_flags & S_SWAPFILE))
++					!IS_SWAPFILE(inode))
+ 		return true;
+ 
+ 	return false;
+-- 
+2.15.0
+

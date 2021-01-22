@@ -1,0 +1,32 @@
+From a5b407992d755d6b23b986db7fc5afa3d833f890 Mon Sep 17 00:00:00 2001
+From: Albert I <kras@raphielgang.org>
+Date: Wed, 12 Jun 2019 12:54:46 +0800
+Subject: [PATCH 398/420] qcacld-3.0: Add packet capture feature option into
+ Kconfig
+
+* Needed after LA.UM.7.4.r1-05300-8x98.0 merge.
+
+Signed-off-by: Albert I <kras@raphielgang.org>
+Change-Id: I7af8ef790db303c8cb0d338479b85b12b4f86019
+---
+ drivers/staging/qcacld-3.0/Kconfig | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/staging/qcacld-3.0/Kconfig b/drivers/staging/qcacld-3.0/Kconfig
+index 662a7d7c6acd..40be59a754a6 100644
+--- a/drivers/staging/qcacld-3.0/Kconfig
++++ b/drivers/staging/qcacld-3.0/Kconfig
+@@ -152,6 +152,10 @@ config WLAN_FEATURE_FILS
+ 	bool "Enable FILS_SK feature"
+ 	default n
+ 
++config WLAN_FEATURE_PKT_CAPTURE
++	bool "Enable packet capture feature"
++	default n
++
+ config FEATURE_PKTLOG
+ 	bool "Packet log"
+ 	default n
+-- 
+2.15.0
+

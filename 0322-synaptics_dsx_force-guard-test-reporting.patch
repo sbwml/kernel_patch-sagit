@@ -1,0 +1,102 @@
+From 6d951cf78a865cb4fbd0356291cfff429ce501dd Mon Sep 17 00:00:00 2001
+From: Demon Singur <demonsingur@gmail.com>
+Date: Sat, 31 Mar 2018 10:56:42 +0000
+Subject: [PATCH 322/420] synaptics_dsx_force: guard test reporting
+
+Change-Id: I4cae16efcae5d1fa7aa1b1a6f7851e4fe9200edd
+---
+ .../touchscreen/synaptics_dsx_force/synaptics_dsx_core.c     | 12 ++++++++++--
+ .../touchscreen/synaptics_dsx_force/synaptics_dsx_core.h     |  6 ++++++
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+index 2f474f1b4dc7..5e3c9a451d30 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.c
+@@ -5034,7 +5034,9 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
+ 	mutex_init(&(rmi4_data->rmi4_irq_enable_mutex));
+ 	mutex_init(&(rmi4_data->rmi4_cover_mutex));
+ 
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 	init_completion(&rmi4_data->dump_completion);
++#endif
+ 
+ 	platform_set_drvdata(pdev, rmi4_data);
+ 
+@@ -5638,17 +5640,20 @@ static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
+ 					rmi4_data->wakeup_en = false;
+ 				}
+ 
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 				rmi4_data->disable_data_dump = false;
++#endif
+ 			}
+ 		} else if (event == FB_EARLY_EVENT_BLANK) {
+ 			transition = evdata->data;
+ 			if ((*transition == FB_BLANK_POWERDOWN) || (*transition == FB_BLANK_NORMAL)) {
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 				rmi4_data->disable_data_dump = true;
+ 				if (rmi4_data->dump_flags) {
+ 					reinit_completion(&rmi4_data->dump_completion);
+ 					wait_for_completion_timeout(&rmi4_data->dump_completion, 4 * HZ);
+ 				}
+-
++#endif
+ 				if (rmi4_data->enable_wakeup_gesture) {
+ 					rmi4_data->wakeup_en = true;
+ 					mdss_regulator_ctrl(rmi4_data, DISP_REG_ALL, true);
+@@ -5700,7 +5705,9 @@ static int synaptics_rmi4_fb_notifier_cb_tddi(struct notifier_block *self,
+ 					rmi4_data->fb_ready = true;
+ 				}
+ 
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 				rmi4_data->disable_data_dump = false;
++#endif
+ 			} else if ((*transition == FB_BLANK_POWERDOWN) || (*transition == FB_BLANK_NORMAL)) {
+ 				if (rmi4_data->wakeup_en) {
+ 					synaptics_rmi4_suspend(&rmi4_data->pdev->dev);
+@@ -5716,12 +5723,13 @@ static int synaptics_rmi4_fb_notifier_cb_tddi(struct notifier_block *self,
+ 					msleep(30);
+ 				}
+ 			} else if ((*transition == FB_BLANK_POWERDOWN) || (*transition == FB_BLANK_NORMAL)) {
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 				rmi4_data->disable_data_dump = true;
+ 				if (rmi4_data->dump_flags) {
+ 					reinit_completion(&rmi4_data->dump_completion);
+ 					wait_for_completion_timeout(&rmi4_data->dump_completion, 4 * HZ);
+ 				}
+-
++#endif
+ 				if (rmi4_data->enable_wakeup_gesture) {
+ 					rmi4_data->wakeup_en = true;
+ 					mdss_panel_reset_skip_enable(true);
+diff --git a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h
+index 718c11e351bb..42136f7b6df3 100644
+--- a/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h
++++ b/drivers/input/touchscreen/synaptics_dsx_force/synaptics_dsx_core.h
+@@ -405,8 +405,12 @@ struct synaptics_rmi4_data {
+ 	bool chip_is_tddi;
+ 	bool open_test_b7;
+ 	bool short_test_extend;
++
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 	bool disable_data_dump;
+ 	bool dump_flags;
++#endif
++
+ 	bool enable_reversed_keys;
+ 
+ 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data,
+@@ -422,7 +426,9 @@ struct synaptics_rmi4_data {
+ 	struct pinctrl_state *pinctrl_state_suspend;
+ 	struct synaptics_dsx_factory_param *factory_param;
+ 
++#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_FORCE
+ 	struct completion dump_completion;
++#endif
+ #ifdef CONFIG_TOUCH_DEBUG_FS
+ 	struct dentry *debugfs;
+ #endif
+-- 
+2.15.0
+

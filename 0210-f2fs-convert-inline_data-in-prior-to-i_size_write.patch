@@ -1,0 +1,80 @@
+From 4e89c8b0ed285b585c01f67fd999898b757e69f4 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Tue, 3 Sep 2019 10:06:26 +0800
+Subject: [PATCH 210/420] f2fs: convert inline_data in prior to i_size_write
+
+In below call path, we change i_size before inline conversion, however,
+if we failed to convert inline inode, the inode may have wrong i_size
+which is larger than max inline size, result inline inode corruption.
+
+- f2fs_setattr
+ - truncate_setsize
+ - f2fs_convert_inline_inode
+
+This patch reorders truncate_setsize() and f2fs_convert_inline_inode()
+to guarantee inline_data has valid i_size.
+
+Fixes: 0cab80ee0c9e ("f2fs: fix to convert inline inode in ->setattr")
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 52c96e994a7b..d320d57e2579 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -819,14 +819,24 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	}
+ 
+ 	if (attr->ia_valid & ATTR_SIZE) {
+-		bool to_smaller = (attr->ia_size <= i_size_read(inode));
++		loff_t old_size = i_size_read(inode);
++
++		if (attr->ia_size > MAX_INLINE_DATA(inode)) {
++			/*
++			 * should convert inline inode before i_size_write to
++			 * keep smaller than inline_data size with inline flag.
++			 */
++			err = f2fs_convert_inline_inode(inode);
++			if (err)
++				return err;
++		}
+ 
+ 		down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 		down_write(&F2FS_I(inode)->i_mmap_sem);
+ 
+ 		truncate_setsize(inode, attr->ia_size);
+ 
+-		if (to_smaller)
++		if (attr->ia_size <= old_size)
+ 			err = f2fs_truncate(inode);
+ 		/*
+ 		 * do not trim all blocks after i_size if target size is
+@@ -834,21 +844,11 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 		 */
+ 		up_write(&F2FS_I(inode)->i_mmap_sem);
+ 		up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-
+ 		if (err)
+ 			return err;
+ 
+-		if (!to_smaller) {
+-			/* should convert inline inode here */
+-			if (!f2fs_may_inline_data(inode)) {
+-				err = f2fs_convert_inline_inode(inode);
+-				if (err)
+-					return err;
+-			}
+-			inode->i_mtime = inode->i_ctime = current_time(inode);
+-		}
+-
+ 		down_write(&F2FS_I(inode)->i_sem);
++		inode->i_mtime = inode->i_ctime = current_time(inode);
+ 		F2FS_I(inode)->last_disk_size = i_size_read(inode);
+ 		up_write(&F2FS_I(inode)->i_sem);
+ 	}
+-- 
+2.15.0
+

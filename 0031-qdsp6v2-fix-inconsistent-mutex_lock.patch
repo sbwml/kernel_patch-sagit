@@ -1,0 +1,29 @@
+From 004f8f01da08385e080e7f83d228fc1ee700cddd Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 20:57:09 -0700
+Subject: [PATCH 031/420] qdsp6v2: fix inconsistent mutex_lock
+
+sound/soc/msm/qdsp6v2/q6voice.c:5984 voc_set_device_config() warn:
+inconsistent returns 'mutex:&v->lock'
+
+Change-Id: Ie58dbea8881acdd6a5253828e15d29075092b818
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ sound/soc/msm/qdsp6v2/q6voice.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/soc/msm/qdsp6v2/q6voice.c b/sound/soc/msm/qdsp6v2/q6voice.c
+index e86337dbab1d..e437a1c7985f 100644
+--- a/sound/soc/msm/qdsp6v2/q6voice.c
++++ b/sound/soc/msm/qdsp6v2/q6voice.c
+@@ -5897,6 +5897,7 @@ int voc_set_device_config(uint32_t session_id, uint8_t path_dir,
+ 		break;
+ 	default:
+ 		pr_err("%s: Invalid path_dir %d\n", __func__, path_dir);
++		mutex_unlock(&v->lock);
+ 		return -EINVAL;
+ 	}
+ 
+-- 
+2.15.0
+

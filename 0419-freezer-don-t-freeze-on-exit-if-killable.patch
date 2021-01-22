@@ -1,0 +1,36 @@
+From 178d464efc35949376f5e5180bb017d22b541d3d Mon Sep 17 00:00:00 2001
+From: Marco Ballesio <balejs@google.com>
+Date: Tue, 3 Nov 2020 07:19:52 +0800
+Subject: [PATCH 419/420] freezer: don't freeze on exit if killable
+
+ptrace_stop forces a task into freezable_schedule, so it's frozen again
+even in the process of exiting.
+
+Don't freeze a task if the killable flag is specified and a task was
+signaled to exit.
+
+Bug: b/156191232
+Test: manually executed Woody's test as for b/156191232 #7
+Change-Id: I6bce4df023e62a20ef028a10264875ed979bc4db
+Signed-off-by: Marco Ballesio <balejs@google.com>
+---
+ kernel/freezer.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/freezer.c b/kernel/freezer.c
+index 3a090b299666..b06a41ef5025 100644
+--- a/kernel/freezer.c
++++ b/kernel/freezer.c
+@@ -45,7 +45,8 @@ bool freezing_slow_path(struct task_struct *p)
+ 	if (test_thread_flag(TIF_MEMDIE))
+ 		return false;
+ 
+-	if (cgroup_freezer_killable(p) && fatal_signal_pending(p))
++	if (cgroup_freezer_killable(p) && (fatal_signal_pending(p)
++				|| (p->flags & PF_SIGNALED)))
+ 		return false;
+ 
+ 	if (pm_nosig_freezing || cgroup_freezing(p))
+-- 
+2.15.0
+

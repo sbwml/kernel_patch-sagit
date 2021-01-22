@@ -1,0 +1,36 @@
+From ed789d476192c51191efee7e3793ccf7a46234b6 Mon Sep 17 00:00:00 2001
+From: Thierry Strudel <tstrudel@google.com>
+Date: Thu, 7 Jul 2016 18:13:23 -0700
+Subject: [PATCH 081/420] pinctrl: qcom: log wakeup reason
+
+Bug: 29697729
+Change-Id: Id25487ba6ba4f141dff3653089a100931bd4fb71
+Signed-off-by: Thierry Strudel <tstrudel@google.com>
+---
+ drivers/pinctrl/qcom/pinctrl-msm.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
+index 1a25430447f4..055b1df3a861 100644
+--- a/drivers/pinctrl/qcom/pinctrl-msm.c
++++ b/drivers/pinctrl/qcom/pinctrl-msm.c
+@@ -30,6 +30,7 @@
+ #include <linux/syscore_ops.h>
+ #include <linux/reboot.h>
+ #include <linux/irqchip/msm-mpm-irq.h>
++#include <linux/wakeup_reason.h>
+ #include "../core.h"
+ #include "../pinconf.h"
+ #include "pinctrl-msm.h"
+@@ -983,7 +984,7 @@ static void msm_pinctrl_resume(void)
+ 				name = "stray irq";
+ 			else if (desc->action && desc->action->name)
+ 				name = desc->action->name;
+-
++			log_base_wakeup_reason(irq);
+ 			pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+ 		}
+ 	}
+-- 
+2.15.0
+

@@ -1,0 +1,65 @@
+From 353afc2ec2139c7dd35a44a38c775da5b0967637 Mon Sep 17 00:00:00 2001
+From: Kevin Brodsky <kevin.brodsky@arm.com>
+Date: Thu, 12 May 2016 09:53:26 +0100
+Subject: [PATCH 139/420] FROMLIST: [PATCH 2/6] arm64: elf: Set AT_SYSINFO_EHDR
+ in compat processes
+
+(cherry pick from url https://patchwork.kernel.org/patch/10060431/)
+
+If the compat vDSO is enabled, we need to set AT_SYSINFO_EHDR in the
+auxiliary vector of compat processes to the address of the vDSO code
+page, so that the dynamic linker can find it (just like the regular vDSO).
+
+Note that we cast context.vdso to Elf64_Off, instead of elf_addr_t,
+because elf_addr_t is Elf32_Off in compat_binfmt_elf.c, and casting
+context.vdso to u32 would trigger a pointer narrowing warning.
+
+Signed-off-by: Kevin Brodsky <kevin.brodsky@arm.com>
+Signed-off-by: Mark Salyzyn <salyzyn@android.com>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Cc: Dave Martin <Dave.Martin@arm.com>
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Bug: 63737556
+Bug: 20045882
+Change-Id: I5d0b191d3b2f4c0b2ec31fe9faef0246253635ce
+---
+ arch/arm64/include/asm/elf.h | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/include/asm/elf.h b/arch/arm64/include/asm/elf.h
+index dbfb51405d5a..b9876364de1a 100644
+--- a/arch/arm64/include/asm/elf.h
++++ b/arch/arm64/include/asm/elf.h
+@@ -141,11 +141,12 @@ typedef struct user_fpsimd_state elf_fpregset_t;
+ #define SET_PERSONALITY(ex)		clear_thread_flag(TIF_32BIT);
+ 
+ /* update AT_VECTOR_SIZE_ARCH if the number of NEW_AUX_ENT entries changes */
+-#define ARCH_DLINFO							\
++#define _SET_AUX_ENT_VDSO						\
+ do {									\
+ 	NEW_AUX_ENT(AT_SYSINFO_EHDR,					\
+-		    (elf_addr_t)current->mm->context.vdso);		\
++		    (Elf64_Off)current->mm->context.vdso);		\
+ } while (0)
++#define ARCH_DLINFO _SET_AUX_ENT_VDSO
+ 
+ #define ARCH_HAS_SETUP_ADDITIONAL_PAGES
+ struct linux_binprm;
+@@ -188,7 +189,11 @@ do {									\
+ 	set_thread_flag(TIF_32BIT);					\
+ } while (0)
+ 
++#ifdef CONFIG_VDSO32
++#define COMPAT_ARCH_DLINFO		_SET_AUX_ENT_VDSO
++#else
+ #define COMPAT_ARCH_DLINFO
++#endif
+ extern int aarch32_setup_vectors_page(struct linux_binprm *bprm,
+ 				      int uses_interp);
+ #define compat_arch_setup_additional_pages \
+-- 
+2.15.0
+

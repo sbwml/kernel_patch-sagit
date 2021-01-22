@@ -1,0 +1,61 @@
+From 7206c382da85cf4e9955677d6bf1e8e27c4b6d7c Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Mon, 20 Nov 2017 01:24:10 +0900
+Subject: [PATCH 008/420] staging: qcacld-3.0: fix an inconsistency between
+ userspace and kernel options
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
+Change-Id: Ic8f571b9a948e81a0d1d282830007632a2b2c6c2
+---
+ drivers/staging/qcacld-3.0/Kconfig | 20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/staging/qcacld-3.0/Kconfig b/drivers/staging/qcacld-3.0/Kconfig
+index dca8422643c1..4fe39c5299a2 100644
+--- a/drivers/staging/qcacld-3.0/Kconfig
++++ b/drivers/staging/qcacld-3.0/Kconfig
+@@ -13,10 +13,6 @@ config QCACLD_WLAN_LFR3
+ 	bool "Enable the WLAN Legacy Fast Roaming feature Version 3"
+ 	default n
+ 
+-config PRIMA_WLAN_OKC
+-	bool "Enable the Prima WLAN Opportunistic Key Caching feature"
+-	default n
+-
+ config PRIMA_WLAN_11AC_HIGH_TP
+ 	bool "Enable the Prima WLAN 802.11ac High Throughput option (depends upon kernel support)"
+ 	default n
+@@ -46,6 +42,10 @@ config QCACLD_FEATURE_GREEN_AP
+ 	bool "Enable Green AP feature"
+ 	default n
+ 
++config QCACLD_FEATURE_METERING
++	bool "Enable metering feature"
++	default n
++
+ config HELIUMPLUS
+ 	bool "Enable Beeliner based descriptor structures for Helium"
+ 	default n
+@@ -124,8 +124,16 @@ config WLAN_FEATURE_DISA
+ 	bool "Enable DISA certification feature"
+ 	default n
+ 
+-config WLAN_SPECTRAL_SCAN
+-	bool "Enable Spectral Scan feature"
++config WLAN_FEATURE_OWE
++	bool "Enable OWE feature"
++	default n
++
++ config WLAN_FEATURE_GMAC
++	bool "Enable GMAC feature"
++	default n
++
++ config WLAN_FEATURE_SAE
++	bool "Enable SAE feature"
+ 	default n
+ 
+ config ICMP_DISABLE_PS
+-- 
+2.15.0
+

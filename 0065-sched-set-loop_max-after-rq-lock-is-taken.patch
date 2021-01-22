@@ -1,0 +1,47 @@
+From 5bb81352bc15724d21a635e18cbb4a147ea4eae2 Mon Sep 17 00:00:00 2001
+From: Uladzislau 2 Rezki <uladzislau2.rezki@sonymobile.com>
+Date: Wed, 8 Feb 2017 09:43:27 +0100
+Subject: [PATCH 065/420] sched: set loop_max after rq lock is taken
+
+While doing a load balance there is a race in setting
+loop_max variable since nr_running can be changed causing
+incorect iteration loops.
+
+As a result we may skip some candidates or check the same
+tasks again.
+
+Change-Id: I2f58f8fe96c14bd70674e600bc33caeb8aa960c6
+Signed-off-by: Uladzislau 2 Rezki <uladzislau2.rezki@sonymobile.com>
+Signed-off-by: Artem Labazov <123321artyom@gmail.com>
+---
+ kernel/sched/fair.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index df2e6dd2c665..18ce8cb02272 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -10536,7 +10536,6 @@ redo:
+ 		 * correctly treated as an imbalance.
+ 		 */
+ 		env.flags |= LBF_ALL_PINNED;
+-		env.loop_max  = min(sysctl_sched_nr_migrate, busiest->nr_running);
+ 
+ more_balance:
+ 		raw_spin_lock_irqsave(&busiest->lock, flags);
+@@ -10549,6 +10548,12 @@ more_balance:
+ 			goto no_move;
+ 		}
+ 
++		/*
++		 * Set loop_max when rq's lock is taken to prevent a race.
++		 */
++		env.loop_max = min(sysctl_sched_nr_migrate,
++							busiest->nr_running);
++
+ 		/*
+ 		 * cur_ld_moved - load moved in current iteration
+ 		 * ld_moved     - cumulative load moved across iterations
+-- 
+2.15.0
+

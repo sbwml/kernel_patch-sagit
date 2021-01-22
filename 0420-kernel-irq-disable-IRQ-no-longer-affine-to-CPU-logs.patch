@@ -1,0 +1,25 @@
+From 8ec7ca2ace9a35205b8d75ec372fab6af46e4b19 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Mon, 9 Nov 2020 12:02:01 +0800
+Subject: [PATCH 420/420] kernel: irq: disable IRQ no longer affine to CPU logs
+
+---
+ kernel/irq/cpuhotplug.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/irq/cpuhotplug.c b/kernel/irq/cpuhotplug.c
+index 4684b7595e63..d58a60f6c906 100644
+--- a/kernel/irq/cpuhotplug.c
++++ b/kernel/irq/cpuhotplug.c
+@@ -108,7 +108,7 @@ void irq_migrate_all_off_this_cpu(void)
+ 		raw_spin_unlock(&desc->lock);
+ 
+ 		if (affinity_broken)
+-			pr_warn_ratelimited("IRQ%u no longer affine to CPU%u\n",
++			pr_debug("IRQ%u no longer affine to CPU%u\n",
+ 					    irq, smp_processor_id());
+ 	}
+ 
+-- 
+2.15.0
+

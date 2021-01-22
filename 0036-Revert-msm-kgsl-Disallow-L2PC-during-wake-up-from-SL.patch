@@ -1,0 +1,169 @@
+From a2e6177ae9f1c055fee021b94e154dfa6b42840d Mon Sep 17 00:00:00 2001
+From: Kyle Piefer <kpiefer@codeaurora.org>
+Date: Thu, 12 Oct 2017 16:20:36 -0700
+Subject: [PATCH 036/420] Revert "msm: kgsl: Disallow L2PC during wake up from
+ SLUMBER"
+
+This reverts commit 5344e5c78f5820dfa34cfcea4572d8e347a018ce.
+The change negatively impacted performance.
+
+CRs-Fixed: 2120475
+Change-Id: Ib6ff329a3501e77d990c2e9502ed35e041f730c8
+Signed-off-by: Kyle Piefer <kpiefer@codeaurora.org>
+---
+ Documentation/devicetree/bindings/gpu/adreno.txt |  3 ---
+ drivers/gpu/msm/adreno.c                         |  4 ----
+ drivers/gpu/msm/adreno_dispatch.c                |  4 +---
+ drivers/gpu/msm/kgsl_pwrctrl.c                   | 17 +++++++++--------
+ drivers/gpu/msm/kgsl_pwrctrl.h                   | 18 +-----------------
+ 5 files changed, 11 insertions(+), 35 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/gpu/adreno.txt b/Documentation/devicetree/bindings/gpu/adreno.txt
+index 80813dd1b3e5..337a72c8fe6d 100644
+--- a/Documentation/devicetree/bindings/gpu/adreno.txt
++++ b/Documentation/devicetree/bindings/gpu/adreno.txt
+@@ -142,9 +142,6 @@ Optional Properties:
+ 				rendering thread is running on masked CPUs.
+ 				Bit 0 is for CPU-0, bit 1 is for CPU-1...
+ 
+-- qcom,l2pc-update-queue:
+-				Disables L2PC on masked CPUs at queue time when it's true.
+-
+ - qcom,snapshot-size:
+ 				Specify the size of snapshot in bytes. This will override
+ 				snapshot size defined in the driver code.
+diff --git a/drivers/gpu/msm/adreno.c b/drivers/gpu/msm/adreno.c
+index 000274c5146a..7c9a801472e5 100644
+--- a/drivers/gpu/msm/adreno.c
++++ b/drivers/gpu/msm/adreno.c
+@@ -1328,10 +1328,6 @@ static int _adreno_start(struct adreno_device *adreno_dev)
+ 	/* make sure ADRENO_DEVICE_STARTED is not set here */
+ 	BUG_ON(test_bit(ADRENO_DEVICE_STARTED, &adreno_dev->priv));
+ 
+-	/* disallow l2pc during wake up to improve GPU wake up time */
+-	kgsl_pwrctrl_update_l2pc(&adreno_dev->dev,
+-			KGSL_L2PC_WAKEUP_TIMEOUT);
+-
+ 	pm_qos_update_request(&device->pwrctrl.pm_qos_req_dma,
+ 			pmqos_wakeup_vote);
+ 
+diff --git a/drivers/gpu/msm/adreno_dispatch.c b/drivers/gpu/msm/adreno_dispatch.c
+index da9d4e17b7c7..1a6d53b777d7 100644
+--- a/drivers/gpu/msm/adreno_dispatch.c
++++ b/drivers/gpu/msm/adreno_dispatch.c
+@@ -1477,9 +1477,7 @@ int adreno_dispatcher_queue_cmds(struct kgsl_device_private *dev_priv,
+ 
+ 	spin_unlock(&drawctxt->lock);
+ 
+-	if (device->pwrctrl.l2pc_update_queue)
+-		kgsl_pwrctrl_update_l2pc(&adreno_dev->dev,
+-				KGSL_L2PC_QUEUE_TIMEOUT);
++	kgsl_pwrctrl_update_l2pc(&adreno_dev->dev);
+ 
+ 	/* Add the context to the dispatcher pending list */
+ 	dispatcher_queue_context(adreno_dev, drawctxt);
+diff --git a/drivers/gpu/msm/kgsl_pwrctrl.c b/drivers/gpu/msm/kgsl_pwrctrl.c
+index c916822036c1..439130ab72a0 100644
+--- a/drivers/gpu/msm/kgsl_pwrctrl.c
++++ b/drivers/gpu/msm/kgsl_pwrctrl.c
+@@ -43,6 +43,13 @@
+ 
+ #define DEFAULT_BUS_P 25
+ 
++/*
++ * The effective duration of qos request in usecs. After
++ * timeout, qos request is cancelled automatically.
++ * Kept 80ms default, inline with default GPU idle time.
++ */
++#define KGSL_L2PC_CPU_TIMEOUT	(80 * 1000)
++
+ /* Order deeply matters here because reasons. New entries go on the end */
+ static const char * const clocks[] = {
+ 	"src_clk",
+@@ -514,14 +521,12 @@ EXPORT_SYMBOL(kgsl_pwrctrl_set_constraint);
+ /**
+  * kgsl_pwrctrl_update_l2pc() - Update existing qos request
+  * @device: Pointer to the kgsl_device struct
+- * @timeout_us: the effective duration of qos request in usecs.
+  *
+  * Updates an existing qos request to avoid L2PC on the
+  * CPUs (which are selected through dtsi) on which GPU
+  * thread is running. This would help for performance.
+  */
+-void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device,
+-			unsigned long timeout_us)
++void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device)
+ {
+ 	int cpu;
+ 
+@@ -535,7 +540,7 @@ void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device,
+ 		pm_qos_update_request_timeout(
+ 				&device->pwrctrl.l2pc_cpus_qos,
+ 				device->pwrctrl.pm_qos_cpu_mask_latency,
+-				timeout_us);
++				KGSL_L2PC_CPU_TIMEOUT);
+ 	}
+ }
+ EXPORT_SYMBOL(kgsl_pwrctrl_update_l2pc);
+@@ -2198,10 +2203,6 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
+ 	kgsl_property_read_u32(device, "qcom,l2pc-cpu-mask",
+ 			&pwr->l2pc_cpus_mask);
+ 
+-	pwr->l2pc_update_queue = of_property_read_bool(
+-				device->pdev->dev.of_node,
+-				"qcom,l2pc-update-queue");
+-
+ 	pm_runtime_enable(&pdev->dev);
+ 
+ 	ocmem_bus_node = of_find_node_by_name(
+diff --git a/drivers/gpu/msm/kgsl_pwrctrl.h b/drivers/gpu/msm/kgsl_pwrctrl.h
+index 02707c901839..d7674e6849f4 100644
+--- a/drivers/gpu/msm/kgsl_pwrctrl.h
++++ b/drivers/gpu/msm/kgsl_pwrctrl.h
+@@ -51,19 +51,6 @@
+ #define KGSL_PWR_DEL_LIMIT 1
+ #define KGSL_PWR_SET_LIMIT 2
+ 
+-/*
+- * The effective duration of qos request in usecs at queue time.
+- * After timeout, qos request is cancelled automatically.
+- * Kept 80ms default, inline with default GPU idle time.
+- */
+-#define KGSL_L2PC_QUEUE_TIMEOUT	(80 * 1000)
+-
+-/*
+- * The effective duration of qos request in usecs at wakeup time.
+- * After timeout, qos request is cancelled automatically.
+- */
+-#define KGSL_L2PC_WAKEUP_TIMEOUT (10 * 1000)
+-
+ enum kgsl_pwrctrl_timer_type {
+ 	KGSL_PWR_IDLE_TIMER,
+ };
+@@ -141,7 +128,6 @@ struct kgsl_regulator {
+  * @irq_name - resource name for the IRQ
+  * @clk_stats - structure of clock statistics
+  * @l2pc_cpus_mask - mask to avoid L2PC on masked CPUs
+- * @l2pc_update_queue - Boolean flag to avoid L2PC on masked CPUs at queue time
+  * @l2pc_cpus_qos - qos structure to avoid L2PC on CPUs
+  * @pm_qos_req_dma - the power management quality of service structure
+  * @pm_qos_active_latency - allowed CPU latency in microseconds when active
+@@ -198,7 +184,6 @@ struct kgsl_pwrctrl {
+ 	const char *irq_name;
+ 	struct kgsl_clk_stats clk_stats;
+ 	unsigned int l2pc_cpus_mask;
+-	bool l2pc_update_queue;
+ 	struct pm_qos_request l2pc_cpus_qos;
+ 	struct pm_qos_request pm_qos_req_dma;
+ 	unsigned int pm_qos_active_latency;
+@@ -266,6 +251,5 @@ int kgsl_active_count_wait(struct kgsl_device *device, int count);
+ void kgsl_pwrctrl_busy_time(struct kgsl_device *device, u64 time, u64 busy);
+ void kgsl_pwrctrl_set_constraint(struct kgsl_device *device,
+ 			struct kgsl_pwr_constraint *pwrc, uint32_t id);
+-void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device,
+-			unsigned long timeout_us);
++void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device);
+ #endif /* __KGSL_PWRCTRL_H */
+-- 
+2.15.0
+

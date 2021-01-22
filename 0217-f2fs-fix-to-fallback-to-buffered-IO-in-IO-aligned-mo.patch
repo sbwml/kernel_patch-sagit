@@ -1,0 +1,41 @@
+From efde7921f07647c7d084d3799ea3bdda3d946a30 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Wed, 28 Aug 2019 17:33:37 +0800
+Subject: [PATCH 217/420] f2fs: fix to fallback to buffered IO in IO aligned
+ mode
+
+In LFS mode, we allow OPU for direct IO, however, we didn't consider
+IO alignment feature, so direct IO can trigger unaligned IO, let's
+just fallback to buffered IO to keep correct IO alignment semantics
+in all places.
+
+Fixes: f847c699cff3 ("f2fs: allow out-place-update for direct IO in LFS mode")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 2a0fa29aba8b..d6bc5a9a8875 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3775,9 +3775,12 @@ static inline bool f2fs_force_buffered_io(struct inode *inode,
+ 	 */
+ 	if (f2fs_sb_has_blkzoned(sbi))
+ 		return true;
+-	if (test_opt(sbi, LFS) && (rw == WRITE) &&
+-				block_unaligned_IO(inode, iocb, iter))
+-		return true;
++	if (test_opt(sbi, LFS) && (rw == WRITE)) {
++		if (block_unaligned_IO(inode, iocb, iter))
++			return true;
++		if (F2FS_IO_ALIGNED(sbi))
++			return true;
++	}
+ 	if (is_sbi_flag_set(F2FS_I_SB(inode), SBI_CP_DISABLED) &&
+ 					!IS_SWAPFILE(inode))
+ 		return true;
+-- 
+2.15.0
+

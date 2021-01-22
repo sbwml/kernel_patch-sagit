@@ -1,0 +1,132 @@
+From 51508f57f18ac32c40849b47243b0341faf7ec51 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Thu, 21 Jan 2021 17:53:33 +0800
+Subject: [PATCH 004/420] Makefile: Suppress void-pointer-to-enum-cast warnings
+
+This warning is a harmless warning. It was introduced in llvm-project
+in https://github.com/llvm/llvm-project/commit/2a41b31fcdfcb67ab7038fc2ffb606fd50b83a84
+
+It fixes these warnings -
+
+./mm/rmap.c:1330:25: warning: cast to smaller integer type 'enum ttu_flags' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ttu_flags flags = (enum ttu_flags)arg;
+
+./drivers/iommu/arm-smmu.c:4081:18: warning: cast to smaller integer type 'enum arm_smmu_arch_version' from 'const void *' [-Wvoid-pointer-to-enum-cast]
+        smmu->version = (enum arm_smmu_arch_version)of_id->data;
+
+./drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c:715:24: warning: cast to smaller integer type 'enum ipa_ip_type' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c:839:24: warning: cast to smaller integer type 'enum ipa_ip_type' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+
+./drivers/platform/msm/ipa/ipa_v3/ipa_debugfs.c:646:24: warning: cast to smaller integer type 'enum ipa_ip_type' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./drivers/platform/msm/ipa/ipa_v3/ipa_debugfs.c:736:24: warning: cast to smaller integer type 'enum ipa_ip_type' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./drivers/platform/msm/ipa/ipa_v3/ipa_debugfs.c:904:24: warning: cast to smaller integer type 'enum ipa_ip_type' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./drivers/platform/msm/ipa/ipa_v3/ipa_debugfs.c:968:24: warning: cast to smaller integer type 'enum ipa_ip_type' from 'void *' [-Wvoid-pointer-to-enum-cast]
+        enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+
+./drivers/power/supply/qcom/bcl_peripheral.c:1353:23: warning: cast to smaller integer type 'enum bcl_hw_type' from 'const void *' [-Wvoid-pointer-to-enum-cast]
+                bcl_perph_version = (enum bcl_hw_type)match->data;
+
+./drivers/power/supply/qcom/smb138x-charger.c:1590:19: warning: cast to smaller integer type 'enum smb_mode' from 'const void *' [-Wvoid-pointer-to-enum-cast]
+        chip->chg.mode = (enum smb_mode) id->data;
+---
+ drivers/iommu/Makefile                   | 5 +++++
+ drivers/platform/msm/ipa/ipa_v2/Makefile | 5 +++++
+ drivers/platform/msm/ipa/ipa_v3/Makefile | 5 +++++
+ drivers/power/Makefile                   | 5 +++++
+ drivers/power/supply/qcom/Makefile       | 5 +++++
+ mm/Makefile                              | 5 +++++
+ 6 files changed, 30 insertions(+)
+
+diff --git a/drivers/iommu/Makefile b/drivers/iommu/Makefile
+index fe78a84c845e..cbd6d715202e 100644
+--- a/drivers/iommu/Makefile
++++ b/drivers/iommu/Makefile
+@@ -1,3 +1,8 @@
++# Disable void-pointer-to-enum-cast
++ifeq ($(cc-name),clang)
++EXTRA_CFLAGS += $(call cc-disable-warning, void-pointer-to-enum-cast)
++endif
++
+ obj-$(CONFIG_IOMMU_API) += iommu.o
+ obj-$(CONFIG_IOMMU_API) += iommu-traces.o
+ obj-$(CONFIG_IOMMU_API) += iommu-sysfs.o
+diff --git a/drivers/platform/msm/ipa/ipa_v2/Makefile b/drivers/platform/msm/ipa/ipa_v2/Makefile
+index 69b8a4c94461..2d101b16e54f 100644
+--- a/drivers/platform/msm/ipa/ipa_v2/Makefile
++++ b/drivers/platform/msm/ipa/ipa_v2/Makefile
+@@ -1,3 +1,8 @@
++# Disable void-pointer-to-enum-cast
++ifeq ($(cc-name),clang)
++EXTRA_CFLAGS += $(call cc-disable-warning, void-pointer-to-enum-cast)
++endif
++
+ obj-$(CONFIG_IPA) += ipat.o
+ ipat-y := ipa.o ipa_debugfs.o ipa_hdr.o ipa_flt.o ipa_rt.o ipa_dp.o ipa_client.o \
+ 	ipa_utils.o ipa_nat.o ipa_intf.o teth_bridge.o ipa_interrupts.o \
+diff --git a/drivers/platform/msm/ipa/ipa_v3/Makefile b/drivers/platform/msm/ipa/ipa_v3/Makefile
+index a4faaea715a8..430613d57122 100644
+--- a/drivers/platform/msm/ipa/ipa_v3/Makefile
++++ b/drivers/platform/msm/ipa/ipa_v3/Makefile
+@@ -1,3 +1,8 @@
++# Disable void-pointer-to-enum-cast
++ifeq ($(cc-name),clang)
++EXTRA_CFLAGS += $(call cc-disable-warning, void-pointer-to-enum-cast)
++endif
++
+ obj-$(CONFIG_IPA3) += ipahal/
+ 
+ obj-$(CONFIG_IPA3) += ipat.o
+diff --git a/drivers/power/Makefile b/drivers/power/Makefile
+index f7adecea0a70..7cee2ece24c8 100644
+--- a/drivers/power/Makefile
++++ b/drivers/power/Makefile
+@@ -1,3 +1,8 @@
++# Disable void-pointer-to-enum-cast
++ifeq ($(cc-name),clang)
++EXTRA_CFLAGS += $(call cc-disable-warning, void-pointer-to-enum-cast)
++endif
++
+ subdir-ccflags-$(CONFIG_POWER_SUPPLY_DEBUG) := -DDEBUG
+ 
+ power_supply-y				:= power_supply_core.o
+diff --git a/drivers/power/supply/qcom/Makefile b/drivers/power/supply/qcom/Makefile
+index 92310ef5c803..c0c270a15e1b 100644
+--- a/drivers/power/supply/qcom/Makefile
++++ b/drivers/power/supply/qcom/Makefile
+@@ -1,3 +1,8 @@
++# Disable void-pointer-to-enum-cast
++ifeq ($(cc-name),clang)
++EXTRA_CFLAGS += $(call cc-disable-warning, void-pointer-to-enum-cast)
++endif
++
+ obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger.o batterydata-lib.o pmic-voter.o
+ obj-$(CONFIG_QPNP_FG)		+= qpnp-fg.o
+ obj-$(CONFIG_QPNP_FG_GEN3)     += qpnp-fg-gen3.o fg-memif.o fg-util.o
+diff --git a/mm/Makefile b/mm/Makefile
+index 04d48b46dbe9..c81cac891d4a 100644
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -9,6 +9,11 @@ KASAN_SANITIZE_slub.o := n
+ # Since __builtin_frame_address does work as used, disable the warning.
+ CFLAGS_usercopy.o += $(call cc-disable-warning, frame-address)
+ 
++# Disable void-pointer-to-enum-cast
++ifeq ($(cc-name),clang)
++EXTRA_CFLAGS += $(call cc-disable-warning, void-pointer-to-enum-cast)
++endif
++
+ # These files are disabled because they produce non-interesting and/or
+ # flaky coverage that is not a function of syscall inputs. E.g. slab is out of
+ # free pages, or a task is migrated between nodes.
+-- 
+2.15.0
+

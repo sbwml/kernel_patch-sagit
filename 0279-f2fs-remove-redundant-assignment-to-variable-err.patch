@@ -1,0 +1,33 @@
+From 3808c27072ecc3bdbb654d94ea26fef47072bcce Mon Sep 17 00:00:00 2001
+From: Colin Ian King <colin.king@canonical.com>
+Date: Mon, 20 Apr 2020 23:00:57 +0100
+Subject: [PATCH 279/420] f2fs: remove redundant assignment to variable err
+
+The variable err is being assigned with a value that is never read
+and it is being updated later with a new value. The initialization is
+redundant and can be removed.
+
+Addresses-Coverity: ("Unused value")
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/namei.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 6b1f2c9b0559..25dcc14afe61 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -502,7 +502,7 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
+ 	struct inode *inode = d_inode(dentry);
+ 	struct f2fs_dir_entry *de;
+ 	struct page *page;
+-	int err = -ENOENT;
++	int err;
+ 
+ 	trace_f2fs_unlink_enter(dir, dentry);
+ 
+-- 
+2.15.0
+

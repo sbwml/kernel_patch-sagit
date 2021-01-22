@@ -1,0 +1,34 @@
+From ec45003e524a6efdf656819190ddf6b535b2bbf7 Mon Sep 17 00:00:00 2001
+From: Demon000 <demonsingur@gmail.com>
+Date: Fri, 10 Nov 2017 20:18:07 +0200
+Subject: [PATCH 313/420] qpnp-wled: add 600kHz freq
+
+Change-Id: I35be564e7e2b84dd01bafe74355672ebb47024a6
+---
+ drivers/leds/leds-qpnp-wled.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/leds/leds-qpnp-wled.c b/drivers/leds/leds-qpnp-wled.c
+index 461693ef9d27..bc8677f37d8f 100644
+--- a/drivers/leds/leds-qpnp-wled.c
++++ b/drivers/leds/leds-qpnp-wled.c
+@@ -185,6 +185,7 @@
+ #define QPNP_WLED_SINK_TEST5_DIG	0x1E
+ #define QPNP_WLED_SINK_TEST5_HVG_PULL_STR_BIT	BIT(3)
+ 
++#define QPNP_WLED_SWITCH_FREQ_600_KHZ_CODE	0x0F
+ #define QPNP_WLED_SWITCH_FREQ_800_KHZ_CODE	0x0B
+ #define QPNP_WLED_SWITCH_FREQ_1600_KHZ_CODE	0x05
+ 
+@@ -1960,6 +1961,8 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
+ 	/* Configure the SWITCHING FREQ register */
+ 	if (wled->switch_freq_khz == 1600)
+ 		reg = QPNP_WLED_SWITCH_FREQ_1600_KHZ_CODE;
++	else if (wled->switch_freq_khz == 600)
++		temp = QPNP_WLED_SWITCH_FREQ_600_KHZ_CODE;
+ 	else
+ 		reg = QPNP_WLED_SWITCH_FREQ_800_KHZ_CODE;
+ 
+-- 
+2.15.0
+

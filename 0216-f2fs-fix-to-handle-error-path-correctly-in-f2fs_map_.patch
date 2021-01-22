@@ -1,0 +1,38 @@
+From a61a7bedd1ff14583b222482cf3c138f6f4a3b27 Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Wed, 28 Aug 2019 17:33:36 +0800
+Subject: [PATCH 216/420] f2fs: fix to handle error path correctly in
+ f2fs_map_blocks
+
+In f2fs_map_blocks(), we should bail out once __allocate_data_block()
+failed.
+
+Fixes: f847c699cff3 ("f2fs: allow out-place-update for direct IO in LFS mode")
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 306cb642d91d..e355351b4eca 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -1229,10 +1229,10 @@ next_block:
+ 		if (test_opt(sbi, LFS) && flag == F2FS_GET_BLOCK_DIO &&
+ 							map->m_may_create) {
+ 			err = __allocate_data_block(&dn, map->m_seg_type);
+-			if (!err) {
+-				blkaddr = dn.data_blkaddr;
+-				set_inode_flag(inode, FI_APPEND_WRITE);
+-			}
++			if (err)
++				goto sync_out;
++			blkaddr = dn.data_blkaddr;
++			set_inode_flag(inode, FI_APPEND_WRITE);
+ 		}
+ 	} else {
+ 		if (create) {
+-- 
+2.15.0
+

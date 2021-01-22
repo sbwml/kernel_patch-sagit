@@ -1,0 +1,42 @@
+From 97fa0a3e61c513511fb26491d6e2ed863d81eb50 Mon Sep 17 00:00:00 2001
+From: Eric Biggers <ebiggers@google.com>
+Date: Tue, 5 May 2020 11:41:11 -0700
+Subject: [PATCH 274/420] f2fs: correctly fix the parent inode number during
+ fsync()
+
+fsync() may be called on a deleted file that's still open.  So when
+fsync() tries to set the parent inode number when the inode has
+LOST_PINO and i_nlink == 1 (to avoid later checkpoints), it needs to
+make sure to get the parent directory via a non-deleted alias.
+
+Also remove the unnecessary igrab() and iput(), as the caller already
+holds a reference to the inode.
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/file.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 9edcedcdf061..0b2d135766fb 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -140,9 +140,11 @@ static int get_parent_ino(struct inode *inode, nid_t *pino)
+ {
+ 	struct dentry *dentry;
+ 
+-	inode = igrab(inode);
+-	dentry = d_find_any_alias(inode);
+-	iput(inode);
++	/*
++	 * Make sure to get the non-deleted alias.  The alias associated with
++	 * the open file descriptor being fsync()'ed may be deleted already.
++	 */
++	dentry = d_find_alias(inode);
+ 	if (!dentry)
+ 		return 0;
+ 
+-- 
+2.15.0
+

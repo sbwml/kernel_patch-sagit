@@ -1,0 +1,38 @@
+From 3b1ddf1274c292968437355dd078676b645cb0fd Mon Sep 17 00:00:00 2001
+From: Tim Murray <timmurray@google.com>
+Date: Tue, 27 Mar 2018 11:34:01 -0700
+Subject: [PATCH 092/420] Revert "Revert "select: use freezable blocking call""
+
+This reverts commit 59612d187912750f416fbffe0c00bc0811c54ab5.
+
+Android doesn't need to worry about buggy i686 implementations, which
+was the reason behind the original revert.
+
+See https://bugzilla.kernel.org/show_bug.cgi?id=61781.
+
+Test: device enters suspend and everything works fine
+bug 77139736
+
+Change-Id: I84dd94d3cc8624293f10d0904c189ca63ecbe3d8
+Signed-off-by: Tim Murray <timmurray@google.com>
+---
+ fs/select.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/select.c b/fs/select.c
+index 3d38808dbcb6..f7667f2c6d0d 100644
+--- a/fs/select.c
++++ b/fs/select.c
+@@ -239,7 +239,8 @@ int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
+ 
+ 	set_current_state(state);
+ 	if (!pwq->triggered)
+-		rc = schedule_hrtimeout_range(expires, slack, HRTIMER_MODE_ABS);
++		rc = freezable_schedule_hrtimeout_range(expires, slack,
++							HRTIMER_MODE_ABS);
+ 	__set_current_state(TASK_RUNNING);
+ 
+ 	/*
+-- 
+2.15.0
+

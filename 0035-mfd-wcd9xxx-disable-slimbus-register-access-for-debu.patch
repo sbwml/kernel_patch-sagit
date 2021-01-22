@@ -1,0 +1,49 @@
+From b8c173712e095af748203d15e269a98c448d95fe Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 12 Oct 2017 16:08:18 -0700
+Subject: [PATCH 035/420] mfd: wcd9xxx: disable slimbus register access for
+ debugfs
+
+This patch disables default slimbus access exposed through debugfs.
+
+Bug: 67430947
+Change-Id: Iaf1b7cdf638dbc6e6de3681b8418f1840b94ccad
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/mfd/wcd9xxx-core.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/mfd/wcd9xxx-core.c b/drivers/mfd/wcd9xxx-core.c
+index 65195f55d6f0..7224bd6a457c 100644
+--- a/drivers/mfd/wcd9xxx-core.c
++++ b/drivers/mfd/wcd9xxx-core.c
+@@ -603,7 +603,7 @@ static void wcd9xxx_device_exit(struct wcd9xxx *wcd9xxx)
+ }
+ 
+ 
+-#ifdef CONFIG_DEBUG_FS
++#if defined(CONFIG_DEBUG_FS) && defined(WCD9XXX_CORE_DEBUG)
+ struct wcd9xxx *debugCodec;
+ 
+ static struct dentry *debugfs_wcd9xxx_dent;
+@@ -1392,7 +1392,7 @@ static int wcd9xxx_slim_probe(struct slim_device *slim)
+ 			__func__, ret);
+ 		goto err_slim_add;
+ 	}
+-#ifdef CONFIG_DEBUG_FS
++#if defined(CONFIG_DEBUG_FS) && defined(WCD9XXX_CORE_DEBUG)
+ 	debugCodec = wcd9xxx;
+ 
+ 	debugfs_wcd9xxx_dent = debugfs_create_dir
+@@ -1437,7 +1437,7 @@ static int wcd9xxx_slim_remove(struct slim_device *pdev)
+ 	struct wcd9xxx *wcd9xxx;
+ 	struct wcd9xxx_pdata *pdata = pdev->dev.platform_data;
+ 
+-#ifdef CONFIG_DEBUG_FS
++#if defined(CONFIG_DEBUG_FS) && defined(WCD9XXX_CORE_DEBUG)
+ 	debugfs_remove_recursive(debugfs_wcd9xxx_dent);
+ #endif
+ 	wcd9xxx = slim_get_devicedata(pdev);
+-- 
+2.15.0
+

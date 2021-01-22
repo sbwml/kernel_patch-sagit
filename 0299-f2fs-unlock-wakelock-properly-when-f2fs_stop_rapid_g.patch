@@ -1,0 +1,38 @@
+From 46247192766677129c9280247d3a576ac2f9eb40 Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Wed, 14 Aug 2019 18:29:28 +0900
+Subject: [PATCH 299/420] f2fs: unlock wakelock properly when
+ f2fs_stop_rapid_gc() is called
+
+f2fs_stop_rapid_gc() will be called when the screen turns on and it won't
+unlock the wakelock if GC didn't end prior to screen on event.
+
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ fs/f2fs/gc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index a4976835d63a..133f0c04b60d 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -214,6 +214,7 @@ out:
+ void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi)
+ {
+ 	struct f2fs_gc_kthread *gc_th = sbi->gc_thread;
++	sbi->rapid_gc = false;
+ 	if (!gc_th)
+ 		return;
+ 	kthread_stop(gc_th->f2fs_gc_task);
+@@ -264,6 +265,8 @@ static void f2fs_stop_rapid_gc(void)
+ 		f2fs_stop_gc_thread(sbi);
+ 	}
+ 	mutex_unlock(&gc_sbi_mutex);
++
++	rapid_gc_set_wakelock();
+ }
+ 
+ void f2fs_gc_sbi_list_add(struct f2fs_sb_info *sbi)
+-- 
+2.15.0
+

@@ -1,0 +1,36 @@
+From 9bdc98d420b495a3defb8fbc5075b143da1776a0 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Mon, 16 Sep 2019 21:41:33 +0800
+Subject: [PATCH 403/420] {chiron,sagit}_defconfig: Enable
+ CONFIG_LOCALVERSION_AUTO
+
+---
+ arch/arm64/configs/chiron_defconfig | 2 +-
+ arch/arm64/configs/sagit_defconfig  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 4987525c41c0..7d444d294e27 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -1,5 +1,5 @@
+ CONFIG_LOCALVERSION="-perf"
+-# CONFIG_LOCALVERSION_AUTO is not set
++CONFIG_LOCALVERSION_AUTO=y
+ # CONFIG_USELIB is not set
+ CONFIG_AUDIT=y
+ # CONFIG_AUDITSYSCALL is not set
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 08d55943e021..a667481ffc70 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -1,5 +1,5 @@
+ CONFIG_LOCALVERSION="-perf"
+-# CONFIG_LOCALVERSION_AUTO is not set
++CONFIG_LOCALVERSION_AUTO=y
+ # CONFIG_USELIB is not set
+ CONFIG_AUDIT=y
+ # CONFIG_AUDITSYSCALL is not set
+-- 
+2.15.0
+

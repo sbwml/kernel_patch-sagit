@@ -1,0 +1,41 @@
+From aa66401875e2ebdf94c2777c6ba01ee06cd833d2 Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 21:33:46 -0700
+Subject: [PATCH 033/420] msm: mdss: fix inconsistent mutex_lock
+
+drivers/video/fbdev/msm/mdss_mdp_pp.c:4093 mdss_mdp_igc_lut_config()
+warn: inconsistent returns 'mutex:&mdss_pp_mutex'
+
+Change-Id: I956017162cde27fbaa3da5aeb28b76ec7308530e
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/video/fbdev/msm/mdss_mdp_pp.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/video/fbdev/msm/mdss_mdp_pp.c b/drivers/video/fbdev/msm/mdss_mdp_pp.c
+index edc154b2b0c6..f2afd04eaf29 100644
+--- a/drivers/video/fbdev/msm/mdss_mdp_pp.c
++++ b/drivers/video/fbdev/msm/mdss_mdp_pp.c
+@@ -4129,7 +4129,8 @@ int mdss_mdp_igc_lut_config(struct msm_fb_data_type *mfd,
+ 		if (config->len != IGC_LUT_ENTRIES) {
+ 			pr_err("invalid len for IGC table for read %d\n",
+ 			       config->len);
+-			return -EINVAL;
++			ret = -EINVAL;
++			goto igc_config_exit;
+ 		}
+ 		ret = pp_get_dspp_num(disp_num, &dspp_num);
+ 		if (ret) {
+@@ -4195,7 +4196,8 @@ clock_off:
+ 		if (config->len != IGC_LUT_ENTRIES) {
+ 			pr_err("invalid len for IGC table for write %d\n",
+ 			       config->len);
+-			return -EINVAL;
++			ret = -EINVAL;
++			goto igc_config_exit;
+ 		}
+ 		if (copy_from_kernel) {
+ 			memcpy(&mdss_pp_res->igc_lut_c0c1[disp_num][0],
+-- 
+2.15.0
+

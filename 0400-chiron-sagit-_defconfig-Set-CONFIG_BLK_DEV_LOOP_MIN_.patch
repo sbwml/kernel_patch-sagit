@@ -1,0 +1,43 @@
+From e86e4fb84c1f81aa99127362d957863485eaec40 Mon Sep 17 00:00:00 2001
+From: Martijn Coenen <maco@android.com>
+Date: Wed, 13 Mar 2019 10:04:10 +0100
+Subject: [PATCH 400/420] {chiron,sagit}_defconfig: Set
+ CONFIG_BLK_DEV_LOOP_MIN_COUNT to 16.
+
+To have the kernel pre-create 16 loop devices, which will save boot time
+as soon as we start having more than 8 APEXes.
+
+Bug: 119022885
+Signed-off-by: Martijn Coenen <maco@android.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index db1e1b2d07ce..7f96bc0d2119 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -251,6 +251,7 @@ CONFIG_DMA_CMA=y
+ CONFIG_ZRAM=y
+ CONFIG_ZRAM_DEFAULT_COMP_ALGORITHM="lz4"
+ CONFIG_BLK_DEV_LOOP=y
++CONFIG_BLK_DEV_LOOP_MIN_COUNT=16
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=8192
+ CONFIG_QSEECOM=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 4168ead36381..b9c2242e9cff 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -251,6 +251,7 @@ CONFIG_DMA_CMA=y
+ CONFIG_ZRAM=y
+ CONFIG_ZRAM_DEFAULT_COMP_ALGORITHM="lz4"
+ CONFIG_BLK_DEV_LOOP=y
++CONFIG_BLK_DEV_LOOP_MIN_COUNT=16
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=8192
+ CONFIG_QSEECOM=y
+-- 
+2.15.0
+

@@ -1,0 +1,38 @@
+From 42c502fbf7148048e4cd44dd3908d7096042b6d4 Mon Sep 17 00:00:00 2001
+From: Subhajeet Muhuri <kenny3fcb@gmail.com>
+Date: Mon, 24 Dec 2018 19:59:22 +0530
+Subject: [PATCH 388/420] {chiron,sagit}_defconfig: Use lz4 for zram
+ compression
+
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index ecfd0fd1ab94..2a012b86099a 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -249,6 +249,7 @@ CONFIG_FW_LOADER_USER_HELPER_FALLBACK=y
+ CONFIG_DMA_CMA=y
+ # CONFIG_PNP_DEBUG_MESSAGES is not set
+ CONFIG_ZRAM=y
++CONFIG_ZRAM_DEFAULT_COMP_ALGORITHM="lz4"
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=8192
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 6eb2d82e69fe..9811d9b2b3d0 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -249,6 +249,7 @@ CONFIG_FW_LOADER_USER_HELPER_FALLBACK=y
+ CONFIG_DMA_CMA=y
+ # CONFIG_PNP_DEBUG_MESSAGES is not set
+ CONFIG_ZRAM=y
++CONFIG_ZRAM_DEFAULT_COMP_ALGORITHM="lz4"
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=8192
+-- 
+2.15.0
+

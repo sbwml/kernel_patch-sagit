@@ -1,0 +1,31 @@
+From ea583d725fae7ca7bb96752355f8af4249e9a94b Mon Sep 17 00:00:00 2001
+From: David Lin <dtwlin@google.com>
+Date: Thu, 1 Jun 2017 21:25:38 -0700
+Subject: [PATCH 027/420] msm_cci: fix inconsistent mutex_lock
+
+drivers/media/platform/msm/camera_v2/sensor/cci/msm_cci.c:939
+msm_cci_i2c_read() warn: inconsistent returns
+'mutex:&cci_dev->cci_master_info[master].mutex_q[queue]'
+
+Change-Id: Ied241d3ff2fd00d4ce892e250a6236fccf16fac9
+Signed-off-by: David Lin <dtwlin@google.com>
+---
+ drivers/media/platform/msm/camera_v2/sensor/cci/msm_cci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/msm/camera_v2/sensor/cci/msm_cci.c b/drivers/media/platform/msm/camera_v2/sensor/cci/msm_cci.c
+index f2c765a4649f..e747d965ee3e 100644
+--- a/drivers/media/platform/msm/camera_v2/sensor/cci/msm_cci.c
++++ b/drivers/media/platform/msm/camera_v2/sensor/cci/msm_cci.c
+@@ -845,7 +845,7 @@ static int32_t msm_cci_i2c_read(struct v4l2_subdev *sd,
+ 	if (rc < 0) {
+ 		pr_err("%s:%d msm_cci_set_clk_param failed rc = %d\n",
+ 			__func__, __LINE__, rc);
+-		return rc;
++		goto ERROR;
+ 	}
+ 
+ 	/*
+-- 
+2.15.0
+

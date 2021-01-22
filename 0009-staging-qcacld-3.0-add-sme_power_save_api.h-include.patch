@@ -1,0 +1,25 @@
+From 9f4d65bdc387b1c60db6ea1d7f0634e26cd9ee74 Mon Sep 17 00:00:00 2001
+From: Ethan Chen <intervigil@gmail.com>
+Date: Thu, 29 Nov 2018 23:43:23 -0800
+Subject: [PATCH 009/420] staging: qcacld-3.0: add sme_power_save_api.h include
+
+Change-Id: Ic5c408a59ea0f859393fbc6e3f6ba6f0c391df43
+---
+ drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c b/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c
+index 646488d9fb95..0e7e841e02c6 100644
+--- a/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c
++++ b/drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_tx_rx.c
+@@ -38,6 +38,7 @@
+ #include <net/cfg80211.h>
+ #include <net/ieee80211_radiotap.h>
+ #include "sap_api.h"
++#include "sme_power_save_api.h"
+ #include "wlan_hdd_wmm.h"
+ #include "wlan_hdd_tdls.h"
+ #include <wlan_hdd_ipa.h>
+-- 
+2.15.0
+

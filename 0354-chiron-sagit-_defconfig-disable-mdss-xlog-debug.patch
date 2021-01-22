@@ -1,0 +1,40 @@
+From 4372dc6abdb0b39364c2ebadbdcc61cecfe4af0d Mon Sep 17 00:00:00 2001
+From: Adrian Salido <salidoa@google.com>
+Date: Tue, 8 Aug 2017 11:45:09 -0700
+Subject: [PATCH 354/420] {chiron,sagit}_defconfig: disable mdss xlog debug
+
+Bug: 62470966
+Change-Id: Ib12674f38fb109ea467729eeeff283299ace2e63
+Signed-off-by: Adrian Salido <salidoa@google.com>
+---
+ arch/arm64/configs/chiron_defconfig | 1 -
+ arch/arm64/configs/sagit_defconfig  | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 72d0177c6765..6139cc009af2 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -450,7 +450,6 @@ CONFIG_FB_MSM_MDSS=y
+ CONFIG_FB_MSM_MDSS_WRITEBACK=y
+ CONFIG_FB_MSM_MDSS_HDMI_PANEL=y
+ CONFIG_FB_MSM_MDSS_DP_PANEL=y
+-CONFIG_FB_MSM_MDSS_XLOG_DEBUG=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+ # CONFIG_SND_PCI is not set
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 72d0177c6765..6139cc009af2 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -450,7 +450,6 @@ CONFIG_FB_MSM_MDSS=y
+ CONFIG_FB_MSM_MDSS_WRITEBACK=y
+ CONFIG_FB_MSM_MDSS_HDMI_PANEL=y
+ CONFIG_FB_MSM_MDSS_DP_PANEL=y
+-CONFIG_FB_MSM_MDSS_XLOG_DEBUG=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+ # CONFIG_SND_PCI is not set
+-- 
+2.15.0
+

@@ -1,0 +1,222 @@
+From d1d7ac0878a6c32acf56065135dc0f0bdbcffc11 Mon Sep 17 00:00:00 2001
+From: engstk <eng.stk@sapo.pt>
+Date: Mon, 31 Jul 2017 18:28:24 +0100
+Subject: [PATCH 405/420] drivers: misc: implement usb fast charge mode
+
+echo 0 /sys/kernel/fast_charge/force_fast_charge (disable)
+echo 1 /sys/kernel/fast_charge/force_fast_charge (enable)
+
+Enables force charging up to 900mA in usb mode
+
+Signed-off-by: engstk <eng.stk@sapo.pt>
+---
+ drivers/misc/Kconfig                |   6 +++
+ drivers/misc/Makefile               |   7 +++
+ drivers/misc/fastchg.c              | 103 ++++++++++++++++++++++++++++++++++++
+ drivers/power/supply/qcom/smb-lib.c |  11 ++++
+ include/linux/fastchg.h             |  22 ++++++++
+ 5 files changed, 149 insertions(+)
+ create mode 100644 drivers/misc/fastchg.c
+ create mode 100644 include/linux/fastchg.h
+
+diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+index 52f75b1faec0..6dc6cb7ffcb2 100644
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -579,6 +579,12 @@ config MEMORY_STATE_TIME
+ 	help
+ 	  Memory time statistics exported to /sys/kernel/memory_state_time
+ 
++config FORCE_FAST_CHARGE
++	bool "Force faster charge rate for USB"
++	default n
++	help
++	  This allows users to override default charge rate for USB
++
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+ source "drivers/misc/cb710/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index b0718228d2d9..11e7b8e5bfac 100644
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -66,3 +66,10 @@ obj-$(CONFIG_UID_SYS_STATS) += uid_sys_stats.o
+ obj-y				+= qcom/
+ obj-$(CONFIG_QPNP_MISC) 	+= qpnp-misc.o
+ obj-$(CONFIG_MEMORY_STATE_TIME) += memory_state_time.o
++
++obj-$(CONFIG_FORCE_FAST_CHARGE) += fastchg.o
++
++# TODO: remove me b/62058353
++subdir-ccflags-y += \
++	-Wno-ignored-attributes \
++	-Wno-header-guard
+diff --git a/drivers/misc/fastchg.c b/drivers/misc/fastchg.c
+new file mode 100644
+index 000000000000..4d4bb727f5bd
+--- /dev/null
++++ b/drivers/misc/fastchg.c
+@@ -0,0 +1,103 @@
++/*
++ * Author: Chad Froebel <chadfroebel@gmail.com>
++ *
++ * Port to cheeseburger: engstk <eng.stk@sapo.pt>
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ */
++
++/*
++ * Possible values for "force_fast_charge" are :
++ *
++ *   0 - Disabled (default)
++ *   1 - Force faster charge
++*/
++
++#include <linux/kobject.h>
++#include <linux/sysfs.h>
++#include <linux/fastchg.h>
++#include <linux/string.h>
++#include <linux/module.h>
++
++int force_fast_charge = 0;
++
++static int __init get_fastcharge_opt(char *ffc)
++{
++	if (strcmp(ffc, "0") == 0) {
++		force_fast_charge = 0;
++	} else if (strcmp(ffc, "1") == 0) {
++		force_fast_charge = 1;
++	} else {
++		force_fast_charge = 0;
++	}
++	return 1;
++}
++
++__setup("ffc=", get_fastcharge_opt);
++
++static ssize_t force_fast_charge_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
++{
++	size_t count = 0;
++	count += sprintf(buf, "%d\n", force_fast_charge);
++	return count;
++}
++
++static ssize_t force_fast_charge_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
++{
++	sscanf(buf, "%d ", &force_fast_charge);
++	if (force_fast_charge < 0 || force_fast_charge > 1)
++		force_fast_charge = 0;
++
++	return count;
++}
++
++static struct kobj_attribute force_fast_charge_attribute =
++__ATTR(force_fast_charge, 0664, force_fast_charge_show, force_fast_charge_store);
++
++static struct attribute *force_fast_charge_attrs[] = {
++&force_fast_charge_attribute.attr,
++NULL,
++};
++
++static struct attribute_group force_fast_charge_attr_group = {
++.attrs = force_fast_charge_attrs,
++};
++
++/* Initialize fast charge sysfs folder */
++static struct kobject *force_fast_charge_kobj;
++
++int force_fast_charge_init(void)
++{
++	int force_fast_charge_retval;
++
++	force_fast_charge_kobj = kobject_create_and_add("fast_charge", kernel_kobj);
++	if (!force_fast_charge_kobj) {
++			return -ENOMEM;
++	}
++
++	force_fast_charge_retval = sysfs_create_group(force_fast_charge_kobj, &force_fast_charge_attr_group);
++
++	if (force_fast_charge_retval)
++		kobject_put(force_fast_charge_kobj);
++
++	if (force_fast_charge_retval)
++		kobject_put(force_fast_charge_kobj);
++
++	return (force_fast_charge_retval);
++}
++
++void force_fast_charge_exit(void)
++{
++	kobject_put(force_fast_charge_kobj);
++}
++
++module_init(force_fast_charge_init);
++module_exit(force_fast_charge_exit);
+diff --git a/drivers/power/supply/qcom/smb-lib.c b/drivers/power/supply/qcom/smb-lib.c
+index 43dab4c15545..ff4e1df97b4f 100644
+--- a/drivers/power/supply/qcom/smb-lib.c
++++ b/drivers/power/supply/qcom/smb-lib.c
+@@ -30,6 +30,10 @@
+ #include <linux/fb.h>
+ #endif
+ 
++#ifdef CONFIG_FORCE_FAST_CHARGE
++#include <linux/fastchg.h>
++#endif
++
+ #define smblib_err(chg, fmt, ...)		\
+ 	pr_err("%s: %s: " fmt, chg->name,	\
+ 		__func__, ##__VA_ARGS__)	\
+@@ -822,6 +826,13 @@ static int set_sdp_current(struct smb_charger *chg, int icl_ua)
+ 	u8 icl_options;
+ 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
+ 
++#ifdef CONFIG_FORCE_FAST_CHARGE
++    if (force_fast_charge > 0 && icl_ua == USBIN_500MA)
++    {
++	icl_ua = USBIN_900MA;
++    }
++#endif
++
+ 	/* power source is SDP */
+ 	switch (icl_ua) {
+ 	case USBIN_100MA:
+diff --git a/include/linux/fastchg.h b/include/linux/fastchg.h
+new file mode 100644
+index 000000000000..b1e4a5d09102
+--- /dev/null
++++ b/include/linux/fastchg.h
+@@ -0,0 +1,22 @@
++/*
++ * Author: Chad Froebel <chadfroebel@gmail.com>
++ *
++ * Port to cheeseburger: engstk <eng.stk@sapo.pt>
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ */
++
++#ifndef _LINUX_FASTCHG_H
++#define _LINUX_FASTCHG_H
++
++extern int force_fast_charge;
++
++#endif
+-- 
+2.15.0
+

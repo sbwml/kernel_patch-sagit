@@ -1,0 +1,29 @@
+From 99a8e5e818d5e135dcfff9b87eec4bbb89888ee2 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Wed, 13 May 2020 21:12:53 -0700
+Subject: [PATCH 273/420] f2fs: flush dirty meta pages when flushing them
+
+Let's guarantee flusing dirty meta pages to avoid infinite loop.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/checkpoint.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index f6d08d9b7b10..114b7f8cabf2 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -1265,6 +1265,9 @@ void f2fs_wait_on_all_pages(struct f2fs_sb_info *sbi, int type)
+ 		if (unlikely(f2fs_cp_error(sbi)))
+ 			break;
+ 
++		if (type == F2FS_DIRTY_META)
++			f2fs_sync_meta_pages(sbi, META, LONG_MAX,
++							FS_CP_META_IO);
+ 		io_schedule_timeout(HZ/50);
+ 	}
+ 	finish_wait(&sbi->cp_wait, &wait);
+-- 
+2.15.0
+

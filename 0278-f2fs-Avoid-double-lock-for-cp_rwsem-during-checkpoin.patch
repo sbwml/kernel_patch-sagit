@@ -1,0 +1,149 @@
+From f402eba0fc8e7a85e3fae10b0e7e97735628c1ad Mon Sep 17 00:00:00 2001
+From: Sayali Lokhande <sayalil@codeaurora.org>
+Date: Thu, 30 Apr 2020 16:28:29 +0530
+Subject: [PATCH 278/420] f2fs: Avoid double lock for cp_rwsem during
+ checkpoint
+
+There could be a scenario where f2fs_sync_node_pages gets
+called during checkpoint, which in turn tries to flush
+inline data and calls iput(). This results in deadlock as
+iput() tries to hold cp_rwsem, which is already held at the
+beginning by checkpoint->block_operations().
+
+Call stack :
+
+Thread A		Thread B
+f2fs_write_checkpoint()
+- block_operations(sbi)
+ - f2fs_lock_all(sbi);
+  - down_write(&sbi->cp_rwsem);
+
+                        - open()
+                         - igrab()
+                        - write() write inline data
+                        - unlink()
+- f2fs_sync_node_pages()
+ - if (is_inline_node(page))
+  - flush_inline_data()
+   - ilookup()
+     page = f2fs_pagecache_get_page()
+     if (!page)
+      goto iput_out;
+     iput_out:
+			-close()
+			-iput()
+       iput(inode);
+       - f2fs_evict_inode()
+        - f2fs_truncate_blocks()
+         - f2fs_lock_op()
+           - down_read(&sbi->cp_rwsem);
+
+Fixes: 2049d4fcb057 ("f2fs: avoid multiple node page writes due to inline_data")
+Signed-off-by: Sayali Lokhande <sayalil@codeaurora.org>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/checkpoint.c |  5 +++++
+ fs/f2fs/f2fs.h       |  1 +
+ fs/f2fs/node.c       | 51 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 55 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index 6342ea3101da..289e955156d3 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -1167,6 +1167,11 @@ static int block_operations(struct f2fs_sb_info *sbi)
+ 	};
+ 	int err = 0, cnt = 0;
+ 
++	/*
++	 * Let's flush inline_data in dirty node pages.
++	 */
++	f2fs_flush_inline_data(sbi);
++
+ retry_flush_quotas:
+ 	f2fs_lock_all(sbi);
+ 	if (__need_flush_quota(sbi)) {
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 595f259c248c..e0c17b272652 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3113,6 +3113,7 @@ void f2fs_ra_node_page(struct f2fs_sb_info *sbi, nid_t nid);
+ struct page *f2fs_get_node_page(struct f2fs_sb_info *sbi, pgoff_t nid);
+ struct page *f2fs_get_node_page_ra(struct page *parent, int start);
+ int f2fs_move_node_page(struct page *node_page, int gc_type);
++int f2fs_flush_inline_data(struct f2fs_sb_info *sbi);
+ int f2fs_fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
+ 			struct writeback_control *wbc, bool atomic,
+ 			unsigned int *seq_id);
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 208b177f803f..b4b6343b12c7 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1805,6 +1805,53 @@ static bool flush_dirty_inode(struct page *page)
+ 	return true;
+ }
+ 
++int f2fs_flush_inline_data(struct f2fs_sb_info *sbi)
++{
++	pgoff_t index = 0;
++	struct pagevec pvec;
++	int nr_pages;
++	int ret = 0;
++
++	pagevec_init(&pvec, 0);
++
++	while ((nr_pages = pagevec_lookup_tag(&pvec,
++			NODE_MAPPING(sbi), &index, PAGECACHE_TAG_DIRTY))) {
++		int i;
++
++		for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
++
++			if (!IS_DNODE(page))
++				continue;
++
++			lock_page(page);
++
++			if (unlikely(page->mapping != NODE_MAPPING(sbi))) {
++continue_unlock:
++				unlock_page(page);
++				continue;
++			}
++
++			if (!PageDirty(page)) {
++				/* someone wrote it for us */
++				goto continue_unlock;
++			}
++
++			/* flush inline_data, if it's async context. */
++			if (is_inline_node(page)) {
++				clear_inline_node(page);
++				unlock_page(page);
++				flush_inline_data(sbi, ino_of_node(page));
++				continue;
++			}
++			unlock_page(page);
++		}
++		pagevec_release(&pvec);
++		cond_resched();
++	}
++	return ret;
++}
++
+ int f2fs_sync_node_pages(struct f2fs_sb_info *sbi,
+ 				struct writeback_control *wbc,
+ 				bool do_balance, enum iostat_type io_type)
+@@ -1868,8 +1915,8 @@ continue_unlock:
+ 				goto continue_unlock;
+ 			}
+ 
+-			/* flush inline_data */
+-			if (is_inline_node(page)) {
++			/* flush inline_data, if it's async context. */
++			if (do_balance && is_inline_node(page)) {
+ 				clear_inline_node(page);
+ 				unlock_page(page);
+ 				flush_inline_data(sbi, ino_of_node(page));
+-- 
+2.15.0
+

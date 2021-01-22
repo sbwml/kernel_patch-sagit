@@ -1,0 +1,105 @@
+From 6d300fd6d92bc0760ee6e492a5ccb74d2257bbb5 Mon Sep 17 00:00:00 2001
+From: Pavankumar Kondeti <pkondeti@codeaurora.org>
+Date: Mon, 16 Oct 2017 14:09:29 +0530
+Subject: [PATCH 149/420] core_ctl: Consider high irq loaded CPU as busy
+
+Currently a CPU is considered as busy if it's utilization in
+the last window exceeds busy threshold. A CPU loaded with
+hardirqs/softirqs does not necessarily have high utilization.
+Isolating such CPUs may hurt performance as it involves waking
+up the CPU frequently from deep c-state. Prevent isolating
+high irq loaded CPUs by considering them as busy.
+
+Change-Id: I169b69f6003eb59a126c8a16b67b65be2aa7af40
+Signed-off-by: Pavankumar Kondeti <pkondeti@codeaurora.org>
+---
+ include/trace/events/sched.h | 6 ++++--
+ kernel/sched/core_ctl.c      | 4 +++-
+ kernel/sched/fair.c          | 4 ++++
+ kernel/sched/sched.h         | 1 -
+ 4 files changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/include/trace/events/sched.h b/include/trace/events/sched.h
+index 8fd96aebfdee..73cd7e502d4c 100644
+--- a/include/trace/events/sched.h
++++ b/include/trace/events/sched.h
+@@ -1373,16 +1373,18 @@ TRACE_EVENT(core_ctl_set_busy,
+ 		__field(u32, busy)
+ 		__field(u32, old_is_busy)
+ 		__field(u32, is_busy)
++		__field(bool, high_irqload)
+ 	),
+ 	TP_fast_assign(
+ 		__entry->cpu = cpu;
+ 		__entry->busy = busy;
+ 		__entry->old_is_busy = old_is_busy;
+ 		__entry->is_busy = is_busy;
++		__entry->high_irqload = sched_cpu_high_irqload(cpu);
+ 	),
+-	TP_printk("cpu=%u, busy=%u, old_is_busy=%u, new_is_busy=%u",
++	TP_printk("cpu=%u, busy=%u, old_is_busy=%u, new_is_busy=%u high_irqload=%d",
+ 		  __entry->cpu, __entry->busy, __entry->old_is_busy,
+-		  __entry->is_busy)
++		  __entry->is_busy, __entry->high_irqload)
+ );
+ 
+ TRACE_EVENT(core_ctl_set_boost,
+diff --git a/kernel/sched/core_ctl.c b/kernel/sched/core_ctl.c
+index 70cd0649ac9b..2f060a570061 100644
+--- a/kernel/sched/core_ctl.c
++++ b/kernel/sched/core_ctl.c
+@@ -22,6 +22,7 @@
+ #include <linux/sched/rt.h>
+ 
+ #include <trace/events/sched.h>
++#include "sched.h"
+ 
+ #define MAX_CPUS_PER_CLUSTER 4
+ #define MAX_CLUSTERS 2
+@@ -575,7 +576,8 @@ static bool eval_need(struct cluster_data *cluster)
+ 		cluster->active_cpus = get_active_cpu_count(cluster);
+ 		thres_idx = cluster->active_cpus ? cluster->active_cpus - 1 : 0;
+ 		list_for_each_entry(c, &cluster->lru, sib) {
+-			if (c->busy >= cluster->busy_up_thres[thres_idx])
++			if (c->busy >= cluster->busy_up_thres[thres_idx] ||
++					sched_cpu_high_irqload(c->cpu))
+ 				c->is_busy = true;
+ 			else if (c->busy < cluster->busy_down_thres[thres_idx])
+ 				c->is_busy = false;
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index 18ce8cb02272..ffc2c71d0374 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -3001,6 +3001,8 @@ struct cpu_select_env *env, struct cluster_cpu_stats *stats)
+ 	int i;
+ 	struct cpumask search_cpus;
+ 
++	extern int num_clusters;
++
+ 	while (!bitmap_empty(env->backup_list, num_clusters)) {
+ 		next = next_candidate(env->backup_list, 0, num_clusters);
+ 		__clear_bit(next->id, env->backup_list);
+@@ -3024,6 +3026,8 @@ next_best_cluster(struct sched_cluster *cluster, struct cpu_select_env *env,
+ {
+ 	struct sched_cluster *next = NULL;
+ 
++	extern int num_clusters;
++
+ 	__clear_bit(cluster->id, env->candidate_list);
+ 
+ 	if (env->rtg && preferred_cluster(cluster, env->p))
+diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
+index 07a3cd3c6fbc..942ce6735bc5 100644
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -430,7 +430,6 @@ struct related_thread_group {
+ };
+ 
+ extern struct list_head cluster_head;
+-extern int num_clusters;
+ extern struct sched_cluster *sched_cluster[NR_CPUS];
+ 
+ struct cpu_cycle {
+-- 
+2.15.0
+

@@ -1,0 +1,173 @@
+From 8b45233dff405dea61763dfc675b405f5f6ee069 Mon Sep 17 00:00:00 2001
+From: Sahitya Tummala <stummala@codeaurora.org>
+Date: Wed, 7 Aug 2019 19:10:32 +0530
+Subject: [PATCH 202/420] f2fs: Fix indefinite loop in f2fs_gc()
+
+Policy - Foreground GC, LFS and greedy GC mode.
+
+Under this policy, f2fs_gc() loops forever to GC as it doesn't have
+enough free segements to proceed and thus it keeps calling gc_more
+for the same victim segment.  This can happen if the selected victim
+segment could not be GC'd due to failed blkaddr validity check i.e.
+is_alive() returns false for the blocks set in current validity map.
+
+Fix this by keeping track of such invalid segments and skip those
+segments for selection in get_victim_by_default() to avoid endless
+GC loop under such error scenarios. Currently, add this logic under
+CONFIG_F2FS_CHECK_FS to be able to root cause the issue in debug
+version.
+
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+[Jaegeuk Kim: fix wrong bitmap size]
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/gc.c      | 25 ++++++++++++++++++++++++-
+ fs/f2fs/segment.c | 27 +++++++++++++++++++--------
+ fs/f2fs/segment.h |  3 +++
+ 3 files changed, 46 insertions(+), 9 deletions(-)
+
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index bac60511c9a2..cfaba621eb1f 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -382,6 +382,16 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
+ 			nsearched++;
+ 		}
+ 
++#ifdef CONFIG_F2FS_CHECK_FS
++		/*
++		 * skip selecting the invalid segno (that is failed due to block
++		 * validity check failure during GC) to avoid endless GC loop in
++		 * such cases.
++		 */
++		if (test_bit(segno, sm->invalid_segmap))
++			goto next;
++#endif
++
+ 		secno = GET_SEC_FROM_SEG(sbi, segno);
+ 
+ 		if (sec_usage_check(sbi, secno))
+@@ -627,8 +637,21 @@ static bool is_alive(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
+ 	source_blkaddr = datablock_addr(NULL, node_page, ofs_in_node);
+ 	f2fs_put_page(node_page, 1);
+ 
+-	if (source_blkaddr != blkaddr)
++	if (source_blkaddr != blkaddr) {
++#ifdef CONFIG_F2FS_CHECK_FS
++		unsigned int segno = GET_SEGNO(sbi, blkaddr);
++		unsigned long offset = GET_BLKOFF_FROM_SEG0(sbi, blkaddr);
++
++		if (unlikely(check_valid_map(sbi, segno, offset))) {
++			if (!test_and_set_bit(segno, SIT_I(sbi)->invalid_segmap)) {
++				f2fs_err(sbi, "mismatched blkaddr %u (source_blkaddr %u) in seg %u\n",
++						blkaddr, source_blkaddr, segno);
++				f2fs_bug_on(sbi, 1);
++			}
++		}
++#endif
+ 		return false;
++	}
+ 	return true;
+ }
+ 
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index d111833991a1..5f22b71b3e49 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -804,9 +804,13 @@ static void __remove_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno,
+ 		if (test_and_clear_bit(segno, dirty_i->dirty_segmap[t]))
+ 			dirty_i->nr_dirty[t]--;
+ 
+-		if (get_valid_blocks(sbi, segno, true) == 0)
++		if (get_valid_blocks(sbi, segno, true) == 0) {
+ 			clear_bit(GET_SEC_FROM_SEG(sbi, segno),
+ 						dirty_i->victim_secmap);
++#ifdef CONFIG_F2FS_CHECK_FS
++			clear_bit(segno, SIT_I(sbi)->invalid_segmap);
++#endif
++		}
+ 	}
+ }
+ 
+@@ -4010,7 +4014,7 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
+ 	struct sit_info *sit_i;
+ 	unsigned int sit_segs, start;
+ 	char *src_bitmap, *bitmap;
+-	unsigned int bitmap_size;
++	unsigned int bitmap_size, main_bitmap_size, sit_bitmap_size;
+ 
+ 	/* allocate memory for SIT information */
+ 	sit_i = f2fs_kzalloc(sbi, sizeof(struct sit_info), GFP_KERNEL);
+@@ -4026,8 +4030,8 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
+ 	if (!sit_i->sentries)
+ 		return -ENOMEM;
+ 
+-	bitmap_size = f2fs_bitmap_size(MAIN_SEGS(sbi));
+-	sit_i->dirty_sentries_bitmap = f2fs_kvzalloc(sbi, bitmap_size,
++	main_bitmap_size = f2fs_bitmap_size(MAIN_SEGS(sbi));
++	sit_i->dirty_sentries_bitmap = f2fs_kvzalloc(sbi, main_bitmap_size,
+ 								GFP_KERNEL);
+ 	if (!sit_i->dirty_sentries_bitmap)
+ 		return -ENOMEM;
+@@ -4076,17 +4080,23 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
+ 	sit_segs = le32_to_cpu(raw_super->segment_count_sit) >> 1;
+ 
+ 	/* setup SIT bitmap from ckeckpoint pack */
+-	bitmap_size = __bitmap_size(sbi, SIT_BITMAP);
++	sit_bitmap_size = __bitmap_size(sbi, SIT_BITMAP);
+ 	src_bitmap = __bitmap_ptr(sbi, SIT_BITMAP);
+ 
+-	sit_i->sit_bitmap = kmemdup(src_bitmap, bitmap_size, GFP_KERNEL);
++	sit_i->sit_bitmap = kmemdup(src_bitmap, sit_bitmap_size, GFP_KERNEL);
+ 	if (!sit_i->sit_bitmap)
+ 		return -ENOMEM;
+ 
+ #ifdef CONFIG_F2FS_CHECK_FS
+-	sit_i->sit_bitmap_mir = kmemdup(src_bitmap, bitmap_size, GFP_KERNEL);
++	sit_i->sit_bitmap_mir = kmemdup(src_bitmap,
++					sit_bitmap_size, GFP_KERNEL);
+ 	if (!sit_i->sit_bitmap_mir)
+ 		return -ENOMEM;
++
++	sit_i->invalid_segmap = f2fs_kvzalloc(sbi,
++					main_bitmap_size, GFP_KERNEL);
++	if (!sit_i->invalid_segmap)
++		return -ENOMEM;
+ #endif
+ 
+ 	/* init SIT information */
+@@ -4095,7 +4105,7 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
+ 	sit_i->sit_base_addr = le32_to_cpu(raw_super->sit_blkaddr);
+ 	sit_i->sit_blocks = sit_segs << sbi->log_blocks_per_seg;
+ 	sit_i->written_valid_blocks = 0;
+-	sit_i->bitmap_size = bitmap_size;
++	sit_i->bitmap_size = sit_bitmap_size;
+ 	sit_i->dirty_sentries = 0;
+ 	sit_i->sents_per_block = SIT_ENTRY_PER_BLOCK;
+ 	sit_i->elapsed_time = le64_to_cpu(sbi->ckpt->elapsed_time);
+@@ -4580,6 +4590,7 @@ static void destroy_sit_info(struct f2fs_sb_info *sbi)
+ 	kvfree(sit_i->sit_bitmap);
+ #ifdef CONFIG_F2FS_CHECK_FS
+ 	kvfree(sit_i->sit_bitmap_mir);
++	kvfree(sit_i->invalid_segmap);
+ #endif
+ 	kvfree(sit_i);
+ }
+diff --git a/fs/f2fs/segment.h b/fs/f2fs/segment.h
+index ec4d568fd58c..b219009c3e20 100644
+--- a/fs/f2fs/segment.h
++++ b/fs/f2fs/segment.h
+@@ -230,6 +230,9 @@ struct sit_info {
+ 	char *sit_bitmap;		/* SIT bitmap pointer */
+ #ifdef CONFIG_F2FS_CHECK_FS
+ 	char *sit_bitmap_mir;		/* SIT bitmap mirror */
++
++	/* bitmap of segments to be ignored by GC in case of errors */
++	unsigned long *invalid_segmap;
+ #endif
+ 	unsigned int bitmap_size;	/* SIT bitmap size */
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,34 @@
+From d7b1ca09dc6a14f36a3cbd36aa307cdbcd01da9c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Thu, 9 Apr 2020 10:25:21 -0700
+Subject: [PATCH 270/420] f2fs: fix quota_sync failure due to f2fs_lock_op
+
+f2fs_quota_sync() uses f2fs_lock_op() before flushing dirty pages, but
+f2fs_write_data_page() returns EAGAIN.
+Likewise dentry blocks, we can just bypass getting the lock, since quota
+blocks are also maintained by checkpoint.
+
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/data.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index c88baba0c5b3..e528876b88c3 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -2272,8 +2272,8 @@ write:
+ 			f2fs_available_free_memory(sbi, BASE_CHECK))))
+ 		goto redirty_out;
+ 
+-	/* Dentry blocks are controlled by checkpoint */
+-	if (S_ISDIR(inode->i_mode)) {
++	/* Dentry/quota blocks are controlled by checkpoint */
++	if (S_ISDIR(inode->i_mode) || IS_NOQUOTA(inode)) {
+ 		fio.need_lock = LOCK_DONE;
+ 		err = f2fs_do_write_data_page(&fio);
+ 		goto done;
+-- 
+2.15.0
+

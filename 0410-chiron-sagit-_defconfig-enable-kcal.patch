@@ -1,0 +1,38 @@
+From 3009f082a4c174c02413a39dbef5556d28210b1a Mon Sep 17 00:00:00 2001
+From: Vol Zhdanov <wight554@gmail.com>
+Date: Sun, 20 May 2018 12:31:01 +0000
+Subject: [PATCH 410/420] {chiron,sagit}_defconfig: enable kcal
+
+Change-Id: Iafc710ef77953ca1c344101123f946627cac3b89
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 36f4fa28185c..6f960df4e59d 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -469,6 +469,7 @@ CONFIG_FB_MSM_MDSS=y
+ CONFIG_FB_MSM_MDSS_WRITEBACK=y
+ CONFIG_FB_MSM_MDSS_HDMI_PANEL=y
+ CONFIG_FB_MSM_MDSS_DP_PANEL=y
++CONFIG_FB_MSM_MDSS_KCAL_CTRL=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+ # CONFIG_SND_PCI is not set
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index 6d3221ef73e0..743cbf9bb1a7 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -469,6 +469,7 @@ CONFIG_FB_MSM_MDSS=y
+ CONFIG_FB_MSM_MDSS_WRITEBACK=y
+ CONFIG_FB_MSM_MDSS_HDMI_PANEL=y
+ CONFIG_FB_MSM_MDSS_DP_PANEL=y
++CONFIG_FB_MSM_MDSS_KCAL_CTRL=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+ # CONFIG_SND_PCI is not set
+-- 
+2.15.0
+

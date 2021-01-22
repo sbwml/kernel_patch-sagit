@@ -1,0 +1,41 @@
+From 60d24f25eb1bf587b36180b7be1b23c6bc8f7d94 Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Fri, 24 Aug 2018 10:44:29 -0700
+Subject: [PATCH 401/420] {chiron,sagit}_defconfig: enable overlayfs
+
+Signed-off-by: Mark Salyzyn <salyzyn@google.com>
+Test: system/core/fs_mgr/tests/adb-remount-test.sh
+Bug: 120448575
+Change-Id: I724f59715e4a2ed555d7cb1d5cbf505a1ae33662
+---
+ arch/arm64/configs/chiron_defconfig | 1 +
+ arch/arm64/configs/sagit_defconfig  | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/chiron_defconfig b/arch/arm64/configs/chiron_defconfig
+index 7f96bc0d2119..f52187232c69 100644
+--- a/arch/arm64/configs/chiron_defconfig
++++ b/arch/arm64/configs/chiron_defconfig
+@@ -679,6 +679,7 @@ CONFIG_QUOTA=y
+ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+ CONFIG_FUSE_FS=y
++CONFIG_OVERLAY_FS=y
+ CONFIG_VFAT_FS=y
+ CONFIG_FAT_DEFAULT_IOCHARSET="utf8"
+ CONFIG_SDFAT_SUPPORT_DIR_SYNC=y
+diff --git a/arch/arm64/configs/sagit_defconfig b/arch/arm64/configs/sagit_defconfig
+index b9c2242e9cff..36dd9fcb6886 100644
+--- a/arch/arm64/configs/sagit_defconfig
++++ b/arch/arm64/configs/sagit_defconfig
+@@ -679,6 +679,7 @@ CONFIG_QUOTA=y
+ CONFIG_QUOTA_NETLINK_INTERFACE=y
+ CONFIG_QFMT_V2=y
+ CONFIG_FUSE_FS=y
++CONFIG_OVERLAY_FS=y
+ CONFIG_VFAT_FS=y
+ CONFIG_FAT_DEFAULT_IOCHARSET="utf8"
+ CONFIG_SDFAT_SUPPORT_DIR_SYNC=y
+-- 
+2.15.0
+

@@ -1,0 +1,193 @@
+From c654fd611ba2724def5dc5cdefdeb3daad87fc99 Mon Sep 17 00:00:00 2001
+From: lance <carck@foxmail.com>
+Date: Sun, 5 Nov 2017 13:11:44 +0800
+Subject: [PATCH 012/420] staging: qcacld-3.0: fix non-debug build
+
+Change-Id: Ifa75acbdd3f5a316fcb593635585b74150833179
+---
+ .../staging/qcacld-3.0/core/mac/inc/mac_trace.h    | 24 ++++++++++++++++++----
+ .../qcacld-3.0/core/mac/src/pe/lim/lim_api.c       |  2 ++
+ .../core/mac/src/pe/lim/lim_process_tdls.c         |  2 ++
+ .../core/mac/src/pe/lim/lim_send_messages.c        |  8 ++++++++
+ .../qcacld-3.0/core/utils/fwlog/dbglog_host.c      |  5 +++--
+ drivers/staging/qcacld-3.0/core/wma/src/wma_main.c |  2 ++
+ 6 files changed, 37 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/staging/qcacld-3.0/core/mac/inc/mac_trace.h b/drivers/staging/qcacld-3.0/core/mac/inc/mac_trace.h
+index 0a8184736432..ffce463bead3 100644
+--- a/drivers/staging/qcacld-3.0/core/mac/inc/mac_trace.h
++++ b/drivers/staging/qcacld-3.0/core/mac/inc/mac_trace.h
+@@ -31,11 +31,14 @@
+ 
+ #include "ani_global.h"
+ 
+-#ifdef TRACE_RECORD
+-
+ #define MAC_TRACE_GET_MODULE_ID(data) ((data >> 8) & 0xff)
+ #define MAC_TRACE_GET_MSG_ID(data)       (data & 0xffff)
+ 
++QDF_STATUS pe_acquire_global_lock(tAniSirLim *psPe);
++QDF_STATUS pe_release_global_lock(tAniSirLim *psPe);
++
++#ifdef TRACE_RECORD
++
+ #define eLOG_NODROP_MISSED_BEACON_SCENARIO 0
+ #define eLOG_PROC_DEAUTH_FRAME_SCENARIO 1
+ 
+@@ -48,8 +51,6 @@ uint8_t *mac_trace_get_lim_msg_string(uint16_t limMsg);
+ uint8_t *mac_trace_get_wma_msg_string(uint16_t wmaMsg);
+ uint8_t *mac_trace_get_sme_msg_string(uint16_t smeMsg);
+ uint8_t *mac_trace_get_info_log_string(uint16_t infoLog);
+-QDF_STATUS pe_acquire_global_lock(tAniSirLim *psPe);
+-QDF_STATUS pe_release_global_lock(tAniSirLim *psPe);
+ 
+ uint8_t *mac_trace_get_neighbour_roam_state(uint16_t neighbourRoamState);
+ uint8_t *mac_trace_getcsr_roam_state(uint16_t csr_roamState);
+@@ -58,6 +59,21 @@ uint8_t *mac_trace_get_lim_sme_state(uint16_t limState);
+ uint8_t *mac_trace_get_lim_mlm_state(uint16_t mlmState);
+ uint8_t *mac_trace_get_tl_state(uint16_t tlState);
+ 
++#else
++
++#define mac_trace_get_cfg_msg_string(cfgMsg) "NULL"
++#define mac_trace_get_lim_msg_string(limMsg) "NULL"
++#define mac_trace_get_wma_msg_string(wmaMsg) "NULL"
++#define mac_trace_get_sme_msg_string(smeMsg) "NULL"
++#define mac_trace_get_info_log_string(infoLog) "NULL"
++
++#define mac_trace_get_neighbour_roam_state(neighbourRoamState) "NULL"
++#define mac_trace_getcsr_roam_state(csr_roamState) "NULL"
++#define mac_trace_getcsr_roam_sub_state(csr_roamSubState) "NULL"
++#define mac_trace_get_lim_sme_state(limState) "NULL"
++#define mac_trace_get_lim_mlm_state(mlmState) "NULL"
++#define mac_trace_get_tl_state(tlState) "NULL"
++
+ #endif
+ 
+ #endif
+diff --git a/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_api.c b/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_api.c
+index 24c0a037b70b..dfe8d4127b43 100644
+--- a/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_api.c
++++ b/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_api.c
+@@ -63,6 +63,8 @@
+ #include "cds_concurrency.h"
+ #include "nan_datapath.h"
+ 
++#define NO_SESSION 0xff
++
+ static void __lim_init_scan_vars(tpAniSirGlobal pMac)
+ {
+ 	pMac->lim.gLimUseScanModeForLearnMode = 1;
+diff --git a/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_process_tdls.c b/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_process_tdls.c
+index b4831eef1f2f..c7a985de9d26 100644
+--- a/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_process_tdls.c
++++ b/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_process_tdls.c
+@@ -70,6 +70,8 @@
+ #include "cds_regdomain.h"
+ #include "cds_utils.h"
+ 
++#define NO_SESSION 0xff
++
+ /* define NO_PAD_TDLS_MIN_8023_SIZE to NOT padding: See CR#447630
+    There was IOT issue with cisco 1252 open mode, where it pads
+    discovery req/teardown frame with some junk value up to min size.
+diff --git a/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_send_messages.c b/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_send_messages.c
+index 129903eb137e..4252f0669e35 100644
+--- a/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_send_messages.c
++++ b/drivers/staging/qcacld-3.0/core/mac/src/pe/lim/lim_send_messages.c
+@@ -589,12 +589,14 @@ tSirRetStatus lim_send_mode_update(tpAniSirGlobal pMac,
+ 	msgQ.bodyval = 0;
+ 	pe_debug("Sending WMA_UPDATE_OP_MODE, op_mode %d, sta_id %d",
+ 			pVhtOpMode->opMode, pVhtOpMode->staId);
++#ifdef LIM_TRACE_RECORD
+ 	if (NULL == psessionEntry)
+ 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
+ 	else
+ 		MTRACE(mac_trace_msg_tx(pMac,
+ 					psessionEntry->peSessionId,
+ 					msgQ.type));
++#endif
+ 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
+ 	if (eSIR_SUCCESS != retCode) {
+ 		qdf_mem_free(pVhtOpMode);
+@@ -624,12 +626,14 @@ tSirRetStatus lim_send_rx_nss_update(tpAniSirGlobal pMac,
+ 	msgQ.bodyptr = pRxNss;
+ 	msgQ.bodyval = 0;
+ 	pe_debug("Sending WMA_UPDATE_RX_NSS");
++#ifdef LIM_TRACE_RECORD
+ 	if (NULL == psessionEntry)
+ 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
+ 	else
+ 		MTRACE(mac_trace_msg_tx(pMac,
+ 					psessionEntry->peSessionId,
+ 					msgQ.type));
++#endif
+ 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
+ 	if (eSIR_SUCCESS != retCode) {
+ 		qdf_mem_free(pRxNss);
+@@ -661,12 +665,14 @@ tSirRetStatus lim_set_membership(tpAniSirGlobal pMac,
+ 	msgQ.bodyptr = pMembership;
+ 	msgQ.bodyval = 0;
+ 	pe_debug("Sending WMA_UPDATE_MEMBERSHIP");
++#ifdef LIM_TRACE_RECORD
+ 	if (NULL == psessionEntry)
+ 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
+ 	else
+ 		MTRACE(mac_trace_msg_tx(pMac,
+ 					psessionEntry->peSessionId,
+ 					msgQ.type));
++#endif
+ 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
+ 	if (eSIR_SUCCESS != retCode) {
+ 		qdf_mem_free(pMembership);
+@@ -697,12 +703,14 @@ tSirRetStatus lim_set_user_pos(tpAniSirGlobal pMac,
+ 	msgQ.bodyptr = pUserPos;
+ 	msgQ.bodyval = 0;
+ 	pe_debug("Sending WMA_UPDATE_USERPOS");
++#ifdef LIM_TRACE_RECORD
+ 	if (NULL == psessionEntry)
+ 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
+ 	else
+ 		MTRACE(mac_trace_msg_tx(pMac,
+ 					psessionEntry->peSessionId,
+ 					msgQ.type));
++#endif
+ 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
+ 	if (eSIR_SUCCESS != retCode) {
+ 		qdf_mem_free(pUserPos);
+diff --git a/drivers/staging/qcacld-3.0/core/utils/fwlog/dbglog_host.c b/drivers/staging/qcacld-3.0/core/utils/fwlog/dbglog_host.c
+index 7e5257faf48c..aad47cfdec02 100644
+--- a/drivers/staging/qcacld-3.0/core/utils/fwlog/dbglog_host.c
++++ b/drivers/staging/qcacld-3.0/core/utils/fwlog/dbglog_host.c
+@@ -52,11 +52,12 @@
+ #include <a_debug.h>
+ #define FWLOG_DEBUG   ATH_DEBUG_MAKE_MODULE_MASK(0)
+ 
+-#ifdef WLAN_DEBUG
+-
+ static int get_version;
+ static int gprint_limiter;
+ static bool tgt_assert_enable;
++
++#ifdef WLAN_DEBUG
++
+ static ATH_DEBUG_MASK_DESCRIPTION g_fwlog_debug_description[] = {
+ 	{FWLOG_DEBUG, "fwlog"},
+ };
+diff --git a/drivers/staging/qcacld-3.0/core/wma/src/wma_main.c b/drivers/staging/qcacld-3.0/core/wma/src/wma_main.c
+index fba86214196d..9e191187f7da 100644
+--- a/drivers/staging/qcacld-3.0/core/wma/src/wma_main.c
++++ b/drivers/staging/qcacld-3.0/core/wma/src/wma_main.c
+@@ -71,7 +71,9 @@
+ #define WMA_LOG_COMPLETION_TIMER 3000 /* 3 seconds */
+ 
+ #define WMI_TLV_HEADROOM 128
++#ifdef TRACE_RECORD
+ uint8_t *mac_trace_get_wma_msg_string(uint16_t wmaMsg);
++#endif
+ static uint32_t g_fw_wlan_feat_caps;
+ /**
+  * wma_get_fw_wlan_feat_caps() - get fw feature capablity
+-- 
+2.15.0
+

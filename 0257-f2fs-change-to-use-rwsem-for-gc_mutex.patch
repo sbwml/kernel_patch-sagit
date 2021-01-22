@@ -1,0 +1,228 @@
+From 858deed9eb96be50ebd85fb3a100e4056058759d Mon Sep 17 00:00:00 2001
+From: Chao Yu <yuchao0@huawei.com>
+Date: Tue, 14 Jan 2020 19:36:50 +0800
+Subject: [PATCH 257/420] f2fs: change to use rwsem for gc_mutex
+
+Mutex lock won't serialize callers, in order to avoid starving of unlucky
+caller, let's use rwsem lock instead.
+
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/f2fs/f2fs.h    |  5 ++++-
+ fs/f2fs/file.c    | 12 ++++++------
+ fs/f2fs/gc.c      | 12 ++++++------
+ fs/f2fs/segment.c |  6 +++---
+ fs/f2fs/super.c   | 16 ++++++++--------
+ 5 files changed, 27 insertions(+), 24 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 5ed3332f6420..2533a4ea8ba6 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1341,7 +1341,10 @@ struct f2fs_sb_info {
+ 	struct f2fs_mount_info mount_opt;	/* mount options */
+ 
+ 	/* for cleaning operations */
+-	struct mutex gc_mutex;			/* mutex for GC */
++	struct rw_semaphore gc_lock;		/*
++						 * semaphore for GC, avoid
++						 * race between GC and GC or CP
++						 */
+ 	struct f2fs_gc_kthread	*gc_thread;	/* GC thread */
+ 	unsigned int cur_victim_sec;		/* current victim section num */
+ 	unsigned int gc_mode;			/* current GC state */
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 0917bea45528..9edcedcdf061 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1558,7 +1558,7 @@ static int expand_inode_data(struct inode *inode, loff_t offset,
+ next_alloc:
+ 		if (has_not_enough_free_secs(sbi, 0,
+ 			GET_SEC_FROM_SEG(sbi, overprovision_segments(sbi)))) {
+-			mutex_lock(&sbi->gc_mutex);
++			down_write(&sbi->gc_lock);
+ 			err = f2fs_gc(sbi, true, false, NULL_SEGNO);
+ 			if (err && err != -ENODATA && err != -EAGAIN)
+ 				goto out_err;
+@@ -2262,12 +2262,12 @@ static int f2fs_ioc_gc(struct file *filp, unsigned long arg)
+ 		return ret;
+ 
+ 	if (!sync) {
+-		if (!mutex_trylock(&sbi->gc_mutex)) {
++		if (!down_write_trylock(&sbi->gc_lock)) {
+ 			ret = -EBUSY;
+ 			goto out;
+ 		}
+ 	} else {
+-		mutex_lock(&sbi->gc_mutex);
++		down_write(&sbi->gc_lock);
+ 	}
+ 
+ 	ret = f2fs_gc(sbi, sync, true, NULL_SEGNO);
+@@ -2305,12 +2305,12 @@ static int f2fs_ioc_gc_range(struct file *filp, unsigned long arg)
+ 
+ do_more:
+ 	if (!range.sync) {
+-		if (!mutex_trylock(&sbi->gc_mutex)) {
++		if (!down_write_trylock(&sbi->gc_lock)) {
+ 			ret = -EBUSY;
+ 			goto out;
+ 		}
+ 	} else {
+-		mutex_lock(&sbi->gc_mutex);
++		down_write(&sbi->gc_lock);
+ 	}
+ 
+ 	ret = f2fs_gc(sbi, range.sync, true, GET_SEGNO(sbi, range.start));
+@@ -2741,7 +2741,7 @@ static int f2fs_ioc_flush_device(struct file *filp, unsigned long arg)
+ 	end_segno = min(start_segno + range.segments, dev_end_segno);
+ 
+ 	while (start_segno < end_segno) {
+-		if (!mutex_trylock(&sbi->gc_mutex)) {
++		if (!down_write_trylock(&sbi->gc_lock)) {
+ 			ret = -EBUSY;
+ 			goto out;
+ 		}
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index ff877c5dabc9..b8c75225664c 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -78,18 +78,18 @@ static int gc_thread_func(void *data)
+ 		 */
+ 		if (sbi->gc_mode == GC_URGENT) {
+ 			wait_ms = gc_th->urgent_sleep_time;
+-			mutex_lock(&sbi->gc_mutex);
++			down_write(&sbi->gc_lock);
+ 			goto do_gc;
+ 		}
+ 
+-		if (!mutex_trylock(&sbi->gc_mutex)) {
++		if (!down_write_trylock(&sbi->gc_lock)) {
+ 			stat_other_skip_bggc_count(sbi);
+ 			goto next;
+ 		}
+ 
+ 		if (!is_idle(sbi, GC_TIME)) {
+ 			increase_sleep_time(gc_th, &wait_ms);
+-			mutex_unlock(&sbi->gc_mutex);
++			up_write(&sbi->gc_lock);
+ 			stat_io_skip_bggc_count(sbi);
+ 			goto next;
+ 		}
+@@ -1370,7 +1370,7 @@ stop:
+ 				reserved_segments(sbi),
+ 				prefree_segments(sbi));
+ 
+-	mutex_unlock(&sbi->gc_mutex);
++	up_write(&sbi->gc_lock);
+ 
+ 	put_gc_inode(&gc_list);
+ 
+@@ -1409,9 +1409,9 @@ static int free_segment_range(struct f2fs_sb_info *sbi, unsigned int start,
+ 			.iroot = RADIX_TREE_INIT(GFP_NOFS),
+ 		};
+ 
+-		mutex_lock(&sbi->gc_mutex);
++		down_write(&sbi->gc_lock);
+ 		do_garbage_collect(sbi, segno, &gc_list, FG_GC);
+-		mutex_unlock(&sbi->gc_mutex);
++		up_write(&sbi->gc_lock);
+ 		put_gc_inode(&gc_list);
+ 
+ 		if (get_valid_blocks(sbi, segno, true))
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index 7936a262ec53..508e1e3cec27 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -504,7 +504,7 @@ void f2fs_balance_fs(struct f2fs_sb_info *sbi, bool need)
+ 	 * dir/node pages without enough free segments.
+ 	 */
+ 	if (has_not_enough_free_secs(sbi, 0, 0)) {
+-		mutex_lock(&sbi->gc_mutex);
++		down_write(&sbi->gc_lock);
+ 		f2fs_gc(sbi, false, false, NULL_SEGNO);
+ 	}
+ }
+@@ -2935,9 +2935,9 @@ int f2fs_trim_fs(struct f2fs_sb_info *sbi, struct fstrim_range *range)
+ 	if (sbi->discard_blks == 0)
+ 		goto out;
+ 
+-	mutex_lock(&sbi->gc_mutex);
++	down_write(&sbi->gc_lock);
+ 	err = f2fs_write_checkpoint(sbi, &cpc);
+-	mutex_unlock(&sbi->gc_mutex);
++	up_write(&sbi->gc_lock);
+ 	if (err)
+ 		goto out;
+ 
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 865e18befc43..fcb664d659ce 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1118,9 +1118,9 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
+ 
+ 		cpc.reason = __get_cp_reason(sbi);
+ 
+-		mutex_lock(&sbi->gc_mutex);
++		down_write(&sbi->gc_lock);
+ 		err = f2fs_write_checkpoint(sbi, &cpc);
+-		mutex_unlock(&sbi->gc_mutex);
++		up_write(&sbi->gc_lock);
+ 	}
+ 	f2fs_trace_ios(NULL, 1);
+ 
+@@ -1467,7 +1467,7 @@ static int f2fs_disable_checkpoint(struct f2fs_sb_info *sbi)
+ 	f2fs_update_time(sbi, DISABLE_TIME);
+ 
+ 	while (!f2fs_time_over(sbi, DISABLE_TIME)) {
+-		mutex_lock(&sbi->gc_mutex);
++		down_write(&sbi->gc_lock);
+ 		err = f2fs_gc(sbi, true, false, NULL_SEGNO);
+ 		if (err == -ENODATA) {
+ 			err = 0;
+@@ -1489,7 +1489,7 @@ static int f2fs_disable_checkpoint(struct f2fs_sb_info *sbi)
+ 		goto restore_flag;
+ 	}
+ 
+-	mutex_lock(&sbi->gc_mutex);
++	down_write(&sbi->gc_lock);
+ 	cpc.reason = CP_PAUSE;
+ 	set_sbi_flag(sbi, SBI_CP_DISABLED);
+ 	err = f2fs_write_checkpoint(sbi, &cpc);
+@@ -1501,7 +1501,7 @@ static int f2fs_disable_checkpoint(struct f2fs_sb_info *sbi)
+ 	spin_unlock(&sbi->stat_lock);
+ 
+ out_unlock:
+-	mutex_unlock(&sbi->gc_mutex);
++	up_write(&sbi->gc_lock);
+ restore_flag:
+ 	sbi->sb->s_flags = s_flags;	/* Restore MS_RDONLY status */
+ 	return err;
+@@ -1509,12 +1509,12 @@ restore_flag:
+ 
+ static void f2fs_enable_checkpoint(struct f2fs_sb_info *sbi)
+ {
+-	mutex_lock(&sbi->gc_mutex);
++	down_write(&sbi->gc_lock);
+ 	f2fs_dirty_to_prefree(sbi);
+ 
+ 	clear_sbi_flag(sbi, SBI_CP_DISABLED);
+ 	set_sbi_flag(sbi, SBI_IS_DIRTY);
+-	mutex_unlock(&sbi->gc_mutex);
++	up_write(&sbi->gc_lock);
+ 
+ 	f2fs_sync_fs(sbi->sb, 1);
+ }
+@@ -3212,7 +3212,7 @@ try_onemore:
+ 
+ 	/* init f2fs-specific super block info */
+ 	sbi->valid_super_block = valid_super_block;
+-	mutex_init(&sbi->gc_mutex);
++	init_rwsem(&sbi->gc_lock);
+ 	mutex_init(&sbi->writepages);
+ 	mutex_init(&sbi->cp_mutex);
+ 	mutex_init(&sbi->resize_mutex);
+-- 
+2.15.0
+

@@ -1,0 +1,180 @@
+From dc8c604b7aec8f2afb4b2f082219a3680f0a2d5f Mon Sep 17 00:00:00 2001
+From: Iliyan Malchev <malchev@google.com>
+Date: Wed, 20 May 2015 20:04:52 -0700
+Subject: [PATCH 079/420] BACKPORT: PM: wakeup_reasons: disable wakeup-reason
+ deduction by default
+
+Introduce a config item, CONFIG_DEDUCE_WAKEUP_REASONS, disabled by default.
+Make CONFIG_PARTUALRESUME select it.
+
+(cherry picked from commit 753b5405eedf67357952e3a10cb3fb1392a3972b)
+Change-Id: I7d831ff0a9dfe0a504824f4bc65ba55c4d92546b
+Signed-off-by: Iliyan Malchev <malchev@google.com>
+---
+ include/linux/wakeup_reason.h | 21 +++++++++++++++------
+ kernel/power/Kconfig          |  4 ++++
+ kernel/power/wakeup_reason.c  | 27 +++++++++++++++++++++------
+ 3 files changed, 40 insertions(+), 12 deletions(-)
+
+diff --git a/include/linux/wakeup_reason.h b/include/linux/wakeup_reason.h
+index ca6226cc1c55..a015ce5c830f 100644
+--- a/include/linux/wakeup_reason.h
++++ b/include/linux/wakeup_reason.h
+@@ -54,6 +54,8 @@ struct wakeup_irq_node {
+ 	bool handled;
+ };
+ 
++#ifdef CONFIG_DEDUCE_WAKEUP_REASONS
++
+ /* Called in the resume path, with interrupts and nonboot cpus disabled; on
+  * need for a spinlock.
+  */
+@@ -77,19 +79,26 @@ static inline bool logging_wakeup_reasons(void)
+ 	return logging_wakeup_reasons_nosync();
+ }
+ 
+-void log_base_wakeup_reason(int irq);
+-
+-void log_suspend_abort_reason(const char *fmt, ...);
+-
+ bool log_possible_wakeup_reason(int irq,
+ 			struct irq_desc *desc,
+ 			bool (*handler)(struct irq_desc *));
+ 
+-int check_wakeup_reason(int irq);
++#else
++
++static inline void start_logging_wakeup_reasons(void) {}
++static inline bool logging_wakeup_reasons_nosync(void) { return false; }
++static inline bool logging_wakeup_reasons(void) { return false; }
++static inline bool log_possible_wakeup_reason(int irq,
++			struct irq_desc *desc,
++			bool (*handler)(struct irq_desc *)) { return true; }
++
++#endif
+ 
+ const struct list_head*
+ get_wakeup_reasons(unsigned long timeout, struct list_head *unfinished);
+-
++void log_base_wakeup_reason(int irq);
+ void clear_wakeup_reasons(void);
++void log_suspend_abort_reason(const char *fmt, ...);
++int check_wakeup_reason(int irq);
+ 
+ #endif /* _LINUX_WAKEUP_REASON_H */
+diff --git a/kernel/power/Kconfig b/kernel/power/Kconfig
+index 4335e7d1c391..500ba8b970e4 100644
+--- a/kernel/power/Kconfig
++++ b/kernel/power/Kconfig
+@@ -322,3 +322,7 @@ config PM_GENERIC_DOMAINS_OF
+ 
+ config CPU_PM
+ 	bool
++
++config DEDUCE_WAKEUP_REASONS
++	bool
++	default n
+diff --git a/kernel/power/wakeup_reason.c b/kernel/power/wakeup_reason.c
+index e8c60538f3f7..538eb7aa8112 100644
+--- a/kernel/power/wakeup_reason.c
++++ b/kernel/power/wakeup_reason.c
+@@ -110,6 +110,7 @@ add_to_siblings(struct wakeup_irq_node *root, int irq)
+ 	return n;
+ }
+ 
++#ifdef CONFIG_DEDUCE_WAKEUP_REASONS
+ static struct wakeup_irq_node* add_child(struct wakeup_irq_node *root, int irq)
+ {
+ 	if (!root->child) {
+@@ -150,6 +151,7 @@ get_base_node(struct wakeup_irq_node *node, unsigned depth)
+ 
+ 	return node;
+ }
++#endif /* CONFIG_DEDUCE_WAKEUP_REASONS */
+ 
+ static const struct list_head* get_wakeup_reasons_nosync(void);
+ 
+@@ -194,6 +196,7 @@ static bool walk_irq_node_tree(struct wakeup_irq_node *root,
+ 	return visit(root, cookie);
+ }
+ 
++#ifdef CONFIG_DEDUCE_WAKEUP_REASONS
+ static bool is_node_handled(struct wakeup_irq_node *n, void *_p)
+ {
+ 	return n->handled;
+@@ -203,6 +206,7 @@ static bool base_irq_nodes_done(void)
+ {
+ 	return walk_irq_node_tree(base_irq_nodes, is_node_handled, NULL);
+ }
++#endif
+ 
+ struct buf_cookie {
+ 	char *buf;
+@@ -308,8 +312,13 @@ void log_base_wakeup_reason(int irq)
+ 	 */
+ 	base_irq_nodes = add_to_siblings(base_irq_nodes, irq);
+ 	BUG_ON(!base_irq_nodes);
++#ifndef CONFIG_DEDUCE_WAKEUP_REASONS
++	base_irq_nodes->handled = true;
++#endif
+ }
+ 
++#ifdef CONFIG_DEDUCE_WAKEUP_REASONS
++
+ /* This function is called by generic_handle_irq, which may call itself
+  * recursively.  This happens with interrupts disabled.  Using
+  * log_possible_wakeup_reason, we build a tree of interrupts, tracing the call
+@@ -328,7 +337,7 @@ void log_base_wakeup_reason(int irq)
+ 
+  */
+ 
+-struct wakeup_irq_node *
++static struct wakeup_irq_node *
+ log_possible_wakeup_reason_start(int irq, struct irq_desc *desc, unsigned depth)
+ {
+ 	BUG_ON(!irqs_disabled());
+@@ -377,7 +386,7 @@ log_possible_wakeup_reason_start(int irq, struct irq_desc *desc, unsigned depth)
+ 	return cur_irq_tree;
+ }
+ 
+-void log_possible_wakeup_reason_complete(struct wakeup_irq_node *n,
++static void log_possible_wakeup_reason_complete(struct wakeup_irq_node *n,
+ 					unsigned depth,
+ 					bool handled)
+ {
+@@ -422,6 +431,8 @@ bool log_possible_wakeup_reason(int irq,
+ 	return handled;
+ }
+ 
++#endif /* CONFIG_DEDUCE_WAKEUP_REASONS */
++
+ void log_suspend_abort_reason(const char *fmt, ...)
+ {
+ 	va_list args;
+@@ -545,15 +556,19 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
+ 		clear_wakeup_reasons();
+ 		break;
+ 	case PM_POST_SUSPEND:
++		/* monotonic time since boot */
++		curr_monotime = ktime_get();
++		/* monotonic time since boot including the time spent in suspend */
++		curr_stime = ktime_get_boottime();
++#ifdef CONFIG_DEDUCE_WAKEUP_REASONS
+ 		/* log_wakeups should have been cleared by now. */
+ 		if (WARN_ON(logging_wakeup_reasons())) {
+ 			stop_logging_wakeup_reasons();
+ 			print_wakeup_sources();
+ 		}
+-		/* monotonic time since boot */
+-		curr_monotime = ktime_get();
+-		/* monotonic time since boot including the time spent in suspend */
+-		curr_stime = ktime_get_boottime();
++#else
++		print_wakeup_sources();
++#endif
+ 		break;
+ 	default:
+ 		break;
+-- 
+2.15.0
+

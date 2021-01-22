@@ -1,0 +1,46 @@
+From 3ddfbc42495718b20b01cf1a8d2f1025d13327c0 Mon Sep 17 00:00:00 2001
+From: Marco Ballesio <balejs@google.com>
+Date: Tue, 3 Nov 2020 07:18:38 +0800
+Subject: [PATCH 418/420] freezer: synch TIF_SIGPENDING clearing with signals
+
+TIF_SIGPENDING must be cleared for killable threads in __refrigerator
+else they will be woken up and spin at any signal. The only exception is
+SIGKILL, that is allowed to wake up frozen processes. For this reason
+SIGKILL handling must be synchronized with clearing TIF_SIGPENDING.
+
+Acquire lock_task_sighand for the current process prior attempting to
+clear TIF_SIGPENDING, then change the flag status only if the task has
+no pending kill signals. Release the lock if acquired successfully.
+
+Bug: 152599711
+Signed-off-by: Marco Ballesio <balejs@google.com>
+---
+ kernel/freezer.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/kernel/freezer.c b/kernel/freezer.c
+index 699f68e98e7c..3a090b299666 100644
+--- a/kernel/freezer.c
++++ b/kernel/freezer.c
+@@ -93,8 +93,16 @@ bool __refrigerator(bool check_kthr_stop)
+ 		 * immediately (if there is a non-fatal signal pending), and
+ 		 * put the task into sleep.
+ 		 */
+-		if (killable)
+-			clear_thread_flag(TIF_SIGPENDING);
++		if (killable) {
++			long flags;
++
++			if (lock_task_sighand(current, &flags)) {
++				if (!sigismember(&current->pending.signal,
++						SIGKILL))
++					clear_thread_flag(TIF_SIGPENDING);
++				unlock_task_sighand(current, &flags);
++			}
++		}
+ 
+ 		schedule();
+ 	}
+-- 
+2.15.0
+

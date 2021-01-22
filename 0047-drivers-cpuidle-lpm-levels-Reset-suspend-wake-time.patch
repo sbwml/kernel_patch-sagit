@@ -1,0 +1,35 @@
+From 9e78e5b82a967625ef4dcc07f02472512413e99c Mon Sep 17 00:00:00 2001
+From: Maulik Shah <mkshah@codeaurora.org>
+Date: Fri, 8 Dec 2017 12:34:25 +0530
+Subject: [PATCH 047/420] drivers: cpuidle: lpm-levels: Reset suspend wake time
+
+During suspend alarm timer sends next wakeup time to
+be programmed. Currently next wakeup time is not reset
+upon wakeup. This causes unintended wakeups if there is
+no alarm set during next suspend.
+
+Reset suspend wake time during exit from suspend.
+
+Change-Id: Ia0e5d08a4e5cdc71f6c2d884363b830de5ef88d5
+Signed-off-by: Maulik Shah <mkshah@codeaurora.org>
+---
+ drivers/cpuidle/lpm-levels.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/cpuidle/lpm-levels.c b/drivers/cpuidle/lpm-levels.c
+index 37acbd6ffd3b..1eaef20e5ed5 100644
+--- a/drivers/cpuidle/lpm-levels.c
++++ b/drivers/cpuidle/lpm-levels.c
+@@ -1335,6 +1335,9 @@ static void cluster_unprepare(struct lpm_cluster *cluster,
+ 
+ 		lpm_wa_cx_unvote_send();
+ 		msm_mpm_exit_sleep(from_idle);
++
++		if (!from_idle)
++			suspend_wake_time = 0;
+ 	}
+ 
+ 	update_debug_pc_event(CLUSTER_EXIT, cluster->last_level,
+-- 
+2.15.0
+

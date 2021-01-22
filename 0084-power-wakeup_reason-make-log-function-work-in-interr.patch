@@ -1,0 +1,79 @@
+From 91f56f112a46b993f189ec76eecbd8c192b9b9e2 Mon Sep 17 00:00:00 2001
+From: Wei Wang <wvw@google.com>
+Date: Thu, 27 Oct 2016 11:03:12 -0700
+Subject: [PATCH 084/420] power: wakeup_reason: make log function work in
+ interrupt context
+
+If log_suspend_abort_reason called in interrupt context, the spinlock
+may deadlock.
+With https://lkml.org/lkml/2014/9/1/404, wakeup mechanism changed, so
+log_suspend_abort_reason can be placed in interrupt context to retrieve
+the abort reasons.
+
+Bug: 32371978
+Change-Id: I6902770e54b663d21b47289daec19401fc0dbed4
+Signed-off-by: Wei Wang <wvw@google.com>
+---
+ kernel/power/wakeup_reason.c | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
+
+diff --git a/kernel/power/wakeup_reason.c b/kernel/power/wakeup_reason.c
+index 538eb7aa8112..20d218a73cae 100644
+--- a/kernel/power/wakeup_reason.c
++++ b/kernel/power/wakeup_reason.c
+@@ -436,12 +436,13 @@ bool log_possible_wakeup_reason(int irq,
+ void log_suspend_abort_reason(const char *fmt, ...)
+ {
+ 	va_list args;
++	unsigned long flags;
+ 
+-	spin_lock(&resume_reason_lock);
++	spin_lock_irqsave(&resume_reason_lock, flags);
+ 
+ 	//Suspend abort reason has already been logged.
+ 	if (suspend_abort) {
+-		spin_unlock(&resume_reason_lock);
++		spin_unlock_irqrestore(&resume_reason_lock, flags);
+ 		return;
+ 	}
+ 
+@@ -450,7 +451,7 @@ void log_suspend_abort_reason(const char *fmt, ...)
+ 	vsnprintf(abort_reason, MAX_SUSPEND_ABORT_LEN, fmt, args);
+ 	va_end(args);
+ 
+-	spin_unlock(&resume_reason_lock);
++	spin_unlock_irqrestore(&resume_reason_lock, flags);
+ }
+ 
+ static bool match_node(struct wakeup_irq_node *n, void *_p)
+@@ -462,9 +463,10 @@ static bool match_node(struct wakeup_irq_node *n, void *_p)
+ int check_wakeup_reason(int irq)
+ {
+ 	bool found;
+-	spin_lock(&resume_reason_lock);
++	unsigned long flags;
++	spin_lock_irqsave(&resume_reason_lock, flags);
+ 	found = !walk_irq_node_tree(base_irq_nodes, match_node, &irq);
+-	spin_unlock(&resume_reason_lock);
++	spin_unlock_irqrestore(&resume_reason_lock, flags);
+ 	return found;
+ }
+ 
+@@ -544,11 +546,12 @@ void clear_wakeup_reasons(void)
+ static int wakeup_reason_pm_event(struct notifier_block *notifier,
+ 		unsigned long pm_event, void *unused)
+ {
++	unsigned long flags;
+ 	switch (pm_event) {
+ 	case PM_SUSPEND_PREPARE:
+-		spin_lock(&resume_reason_lock);
++		spin_lock_irqsave(&resume_reason_lock, flags);
+ 		suspend_abort = false;
+-		spin_unlock(&resume_reason_lock);
++		spin_unlock_irqrestore(&resume_reason_lock, flags);
+ 		/* monotonic time since boot */
+ 		last_monotime = ktime_get();
+ 		/* monotonic time since boot including the time spent in suspend */
+-- 
+2.15.0
+
